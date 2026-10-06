@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MastroFit - Sessione</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: '#ff8c00' } } } }</script>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .workout-input { width: 100%; background-color: #121212; border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; }
+        .workout-input:focus { outline: none; border-color: #ff8c00; }
+        .workout-notes { width: 100%; background-color: #1a1a1a; border: 1px solid #333; color: #ccc; padding: 10px; border-radius: 6px; font-size: 0.9rem; resize: none; margin-top: 10px; }
+        .workout-notes:focus { border-color: #ff8c00; outline: none; }
+        .timer-btn { background-color: #2563eb; color: white; border-radius: 8px; font-weight: bold; width: 60px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .timer-btn.active { background-color: #dc2626; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.95); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-32 relative">
+
+    <div id="section-workout">
+        <div class="flex justify-between items-center mb-6">
+            <div><h2 class="text-2xl font-bold text-brandOrange" id="workout-title">Sessione</h2><p class="text-sm text-gray-400">Compila i set o usa il timer</p></div>
+            <div class="flex items-center space-x-3">
+                <div class="bg-darkCard px-3 py-1 rounded border border-gray-700 text-center">
+                    <i class="fa-solid fa-stopwatch text-brandOrange text-xs"></i>
+                    <div id="global-timer" class="text-lg font-mono font-bold leading-none">00:00</div>
+                </div>
+                <button onclick="window.location.href = 'calisthenics.html'" class="text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+        </div>
+
+        <div id="workout-container" class="space-y-6 mb-8"></div>
+
+        <button onclick="salvaETermina()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition active:scale-95 flex justify-center items-center mb-10">
+            <i class="fa-solid fa-check-double mr-2"></i> Termina e Salva
+        </button>
+    </div>
+
+    <div id="section-report" class="hidden">
+        <div class="text-center mt-6 mb-8">
+            <div class="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-trophy text-4xl text-white"></i></div>
+            <h2 class="text-3xl font-bold text-white mb-2">Conclusa!</h2>
+            <p class="text-gray-400">Dati salvati in memoria.</p>
+        </div>
+        <button onclick="window.location.href = 'calisthenics.html'" class="w-full bg-brandOrange text-white font-bold py-4 rounded-xl shadow-lg transition">Torna all'Hub</button>
+    </div>
+
+    <!-- UI TIMER DI RECUPERO IN BASSO -->
+    <div id="rest-timer-ui" class="fixed bottom-0 left-0 w-full bg-brandOrange text-white p-5 flex justify-between items-center z-50 rounded-t-2xl transform translate-y-full transition-transform duration-300">
+        <div><span class="text-xs font-bold uppercase block mb-1">Recupero</span><div id="rest-timer-display" class="text-4xl font-mono font-black leading-none">00:00</div></div>
+        <button onclick="saltaRecupero()" class="bg-white text-brandOrange font-bold px-5 py-3 rounded-xl active:scale-95">Salta</button>
+    </div>
+
+    <script>
+        const databaseSchede = JSON.parse(localStorage.getItem('mastro_schede'));
+        const idScheda = localStorage.getItem('schedaDaAvviare');
+        const scheda = databaseSchede[idScheda];
+        document.getElementById('workout-title').innerText = idScheda;
+
+        const container = document.getElementById('workout-container');
+        
+        // RENDER DELL'INTERFACCIA
+        scheda.forEach((ex, exIndex) => {
+            let setsHtml = '';
+            for (let i = 1; i <= ex.set; i++) {
+                let inputId = `val-${exIndex}-${i}`;
+                
+                if (ex.isTime) {
+                    // SET A TEMPO (Timer Integrato)
+                    // Estrae il numero di secondi previsti dal target (es. "30 sec" -> 30)
+                    let secTarget = parseInt(ex.target.replace(/\D/g, '')) || 30;
+                    setsHtml += `
+                        <div class="flex items-center justify-between bg-darkBg p-3 rounded-lg border border-gray-800 mb-2">
+                            <span class="text-gray-400 font-bold w-1/5">Set ${i}</span>
+                            <div class="flex space-x-2 w-4/5">
+                                <button id="btn-${inputId}" onclick="toggleSetTimer(this, '${inputId}', ${secTarget})" class="timer-btn">
+                                    <i class="fa-solid fa-play"></i>
+                                </button>
+                                <input type="number" id="${inputId}" class="workout-input rep-input" data-ex="${ex.nome}" placeholder="Sec">
+                                <input type="number" class="workout-input rpe-input" data-recsec="${ex.recSec}" placeholder="RPE" min="1" max="10">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // SET NORMALE (Rep)
+                    setsHtml += `
+                        <div class="flex items-center justify-between bg-darkBg p-3 rounded-lg border border-gray-800 mb-2">
+                            <span class="text-gray-400 font-bold w-1/4">Set ${i}</span>
+                            <div class="flex space-x-2 w-3/4">
+                                <input type="number" id="${inputId}" class="workout-input rep-input" data-ex="${ex.nome}" placeholder="Rep">
+                                <input type="number" class="workout-input rpe-input" data-recsec="${ex.recSec}" placeholder="RPE" min="1" max="10">
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Aggiunta Box Note a fine card
+            container.innerHTML += `
+                <div class="bg-darkCard p-4 rounded-xl border border-gray-800 shadow-sm">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">${ex.nome}</h3>
+                            <p class="text-sm text-gray-400 mt-1"><i class="fa-solid fa-clock text-brandOrange mr-1"></i> ${ex.rec}</p>
+                        </div>
+                        <span class="text-xs bg-gray-800 text-brandOrange px-2 py-1 rounded font-semibold whitespace-nowrap ml-2">TGT: ${ex.target}</span>
+                    </div>
+                    ${setsHtml}
+                    <textarea class="workout-notes note-input" data-ex="${ex.nome}" rows="2" placeholder="Note per ${ex.nome}..."></textarea>
+                </div>
+            `;
+        });
+
+        // --- GESTIONE AUDIO ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(frequency, duration) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine'; osc.frequency.value = frequency;
+            osc.start(); setTimeout(() => osc.stop(), duration);
+        }
+
+        // --- TIMER ISOMETRICO PER SET A TEMPO ---
+        let activeSetTimers = {}; // { id: interval }
+        
+        function toggleSetTimer(btn, inputId, targetSec) {
+            const inputField = document.getElementById(inputId);
+            
+            // Se sta già andando, lo ferma
+            if (btn.classList.contains('active')) {
+                clearInterval(activeSetTimers[inputId].interval);
+                let timeDone = targetSec - activeSetTimers[inputId].timeLeft;
+                inputField.value = timeDone > 0 ? timeDone : targetSec; // Inserisce il tempo reale
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                delete activeSetTimers[inputId];
+                return;
+            }
+
+            // Fa partire il timer
+            btn.classList.add('active');
+            inputField.value = targetSec; // Mostra da dove parte
+            
+            let timeLeft = targetSec;
+            activeSetTimers[inputId] = {
+                timeLeft: timeLeft,
+                interval: setInterval(() => {
+                    timeLeft--;
+                    activeSetTimers[inputId].timeLeft = timeLeft;
+                    inputField.value = timeLeft;
+
+                    if (timeLeft === 3 || timeLeft === 2 || timeLeft === 1) playBeep(500, 200);
+                    else if (timeLeft <= 0) {
+                        playBeep(900, 800); // Beep lungo di fine isometria
+                        clearInterval(activeSetTimers[inputId].interval);
+                        btn.classList.remove('active');
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Spunta di completato
+                        btn.style.backgroundColor = '#16a34a'; // Diventa verde
+                        inputField.value = targetSec; // Scrive il tempo target completato
+                        delete activeSetTimers[inputId];
+                    }
+                }, 1000)
+            };
+        }
+
+        // --- TIMER RECUPERO E GLOBALE ---
+        let globalStart = Date.now();
+        let globalInterval = setInterval(() => {
+            let d = Math.floor((Date.now() - globalStart) / 1000);
+            document.getElementById('global-timer').innerText = `${String(Math.floor(d/60)).padStart(2,'0')}:${String(d%60).padStart(2,'0')}`;
+        }, 1000);
+
+        let restInterval; let restLeft = 0;
+        document.querySelectorAll('.rpe-input').forEach(input => {
+            input.addEventListener('blur', function() {
+                const recSec = parseInt(this.getAttribute('data-recsec'));
+                if(this.value !== "" && recSec > 0) avviaRecupero(recSec);
+            });
+        });
+
+        function avviaRecupero(sec) {
+            clearInterval(restInterval); restLeft = sec;
+            const ui = document.getElementById('rest-timer-ui');
+            const disp = document.getElementById('rest-timer-display');
+            disp.innerText = `${String(Math.floor(restLeft/60)).padStart(2,'0')}:${String(restLeft%60).padStart(2,'0')}`;
+            ui.classList.remove('translate-y-full');
+
+            restInterval = setInterval(() => {
+                restLeft--;
+                disp.innerText = `${String(Math.floor(restLeft/60)).padStart(2,'0')}:${String(restLeft%60).padStart(2,'0')}`;
+                if (restLeft === 3 || restLeft === 2 || restLeft === 1) playBeep(440, 200);
+                else if (restLeft <= 0) { playBeep(880, 600); saltaRecupero(); }
+            }, 1000);
+        }
+        function saltaRecupero() { clearInterval(restInterval); document.getElementById('rest-timer-ui').classList.add('translate-y-full'); }
+
+        // --- SALVATAGGIO ---
+        function salvaETermina() {
+            clearInterval(globalInterval); saltaRecupero();
+            
+            // Ferma eventuali timer set rimasti appesi
+            Object.values(activeSetTimers).forEach(t => clearInterval(t.interval));
+
+            const repInputs = document.querySelectorAll('.rep-input');
+            const rpeInputs = document.querySelectorAll('.rpe-input');
+            const noteInputs = document.querySelectorAll('.note-input');
+
+            let reportRep = {}; let sRPE = 0; let cRPE = 0;
+
+            // Salva ripetizioni / secondi
+            repInputs.forEach(input => {
+                const exName = input.getAttribute('data-ex');
+                const val = parseInt(input.value) || 0;
+                if (!reportRep[exName]) reportRep[exName] = 0;
+                reportRep[exName] += val;
+            });
+
+            // Calcola RPE Medio
+            rpeInputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) { sRPE += val; cRPE++; }
+            });
+            const mediaRPE = cRPE > 0 ? (sRPE / cRPE).toFixed(1) : "N/A";
+
+            // SALVA LE NOTE NEL DATABASE DEDICATO
+            let dbNote = JSON.parse(localStorage.getItem('mastro_notes')) || {};
+            const dataOdierna = new Date().toISOString();
+            
+            noteInputs.forEach(note => {
+                const testo = note.value.trim();
+                if(testo !== "") {
+                    const exName = note.getAttribute('data-ex');
+                    if(!dbNote[exName]) dbNote[exName] = [];
+                    dbNote[exName].push({ data: dataOdierna, testo: testo });
+                }
+            });
+            localStorage.setItem('mastro_notes', JSON.stringify(dbNote));
+
+            // SALVA LO STORICO SESSIONE
+            const storico = JSON.parse(localStorage.getItem('mastro_workout_history')) || [];
+            storico.push({
+                data: dataOdierna.split('T')[0],
+                scheda: idScheda,
+                durata: document.getElementById('global-timer').innerText,
+                rpeMedio: mediaRPE,
+                dettagli: reportRep
+            });
+            localStorage.setItem('mastro_workout_history', JSON.stringify(storico));
+
+            document.getElementById('section-workout').classList.add('hidden');
+            document.getElementById('section-report').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>

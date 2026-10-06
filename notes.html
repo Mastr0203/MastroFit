@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MastroFit - Note Esercizi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: '#ff8c00' } } } }</script>
+    <style>body { background-color: #121212; color: #ffffff; font-family: -apple-system, sans-serif; }</style>
+</head>
+<body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-20">
+
+    <div class="flex items-center justify-between mb-8">
+        <button onclick="window.location.href = 'index.html'" class="text-gray-400 hover:text-white flex items-center text-sm font-semibold transition">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Home
+        </button>
+        <h2 class="text-2xl font-bold text-white">Archivio Note</h2>
+    </div>
+
+    <div class="bg-darkCard p-5 rounded-xl shadow-lg border border-gray-800 mb-6">
+        <label class="block text-sm font-semibold text-gray-400 mb-2">Filtra per Esercizio</label>
+        <select id="ex-select" class="w-full bg-[#121212] text-white border border-gray-700 rounded-lg p-3 focus:outline-none focus:border-brandOrange" onchange="mostraNote()">
+            <option value="">Seleziona un esercizio...</option>
+        </select>
+    </div>
+
+    <div id="notes-container" class="space-y-4">
+        <!-- Le note spuntano qui -->
+    </div>
+
+    <script>
+        const noteDb = JSON.parse(localStorage.getItem('mastro_notes')) || {};
+        const exSelect = document.getElementById('ex-select');
+        
+        // Popola la tendina solo con esercizi che hanno note
+        Object.keys(noteDb).forEach(ex => {
+            exSelect.innerHTML += `<option value="${ex}">${ex}</option>`;
+        });
+
+        function mostraNote() {
+            const container = document.getElementById('notes-container');
+            const ex = exSelect.value;
+            container.innerHTML = '';
+
+            if(!ex || !noteDb[ex]) return;
+
+            // Invertiamo l'array per avere le note più recenti in alto
+            const noteReverse = [...noteDb[ex]].reverse();
+
+            noteReverse.forEach(n => {
+                // Formatta la data italiana
+                let d = new Date(n.data);
+                let dataFormattata = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+                
+                container.innerHTML += `
+                    <div class="bg-darkCard p-4 rounded-xl border border-gray-800 border-l-4 border-l-brandOrange shadow-md">
+                        <div class="text-xs text-brandOrange font-bold mb-2"><i class="fa-regular fa-calendar mr-1"></i> ${dataFormattata}</div>
+                        <p class="text-gray-300 text-sm leading-relaxed">${n.testo}</p>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

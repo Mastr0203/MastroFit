@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MastroFit - Data & Analytics</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Librerie -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: '#ff8c00' } } } }
+    </script>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        .tab-btn.active { border-bottom: 3px solid #ff8c00; color: #ff8c00; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        input { background-color: #121212; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; width: 100%; margin-top: 5px; font-weight: bold; text-align: center; }
+        input:focus { outline: none; border-color: #ff8c00; }
+        
+        /* Scroll orizzontale per i tab */
+        .tabs-container::-webkit-scrollbar { display: none; }
+        .tabs-container { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-20">
+
+    <!-- Header Profilo -->
+    <div class="flex items-center justify-between mb-6">
+        <button onclick="window.location.href = 'index.html'" class="text-gray-400 hover:text-white flex items-center text-sm font-semibold transition">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Home
+        </button>
+        <h2 class="text-2xl font-bold text-white">Data Hub</h2>
+    </div>
+
+    <!-- DASHBOARD GLOBALE (KPIs) -->
+    <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="bg-darkCard p-3 rounded-xl border border-gray-800 text-center shadow-lg">
+            <i class="fa-solid fa-fire text-brandOrange text-lg mb-1"></i>
+            <h3 class="text-xl font-black text-white" id="stat-workouts">0</h3>
+            <p class="text-[10px] uppercase tracking-wide text-gray-500 font-bold">Workout</p>
+        </div>
+        <div class="bg-darkCard p-3 rounded-xl border border-gray-800 text-center shadow-lg">
+            <i class="fa-solid fa-stopwatch text-brandOrange text-lg mb-1"></i>
+            <h3 class="text-xl font-black text-white" id="stat-tut">0h 0m</h3>
+            <p class="text-[10px] uppercase tracking-wide text-gray-500 font-bold">T.U.T.</p>
+        </div>
+        <div class="bg-darkCard p-3 rounded-xl border border-gray-800 text-center shadow-lg">
+            <i class="fa-solid fa-chart-line text-brandOrange text-lg mb-1"></i>
+            <h3 class="text-xl font-black text-white" id="stat-freq">0.0</h3>
+            <p class="text-[10px] uppercase tracking-wide text-gray-500 font-bold">Sess / Sett</p>
+        </div>
+    </div>
+
+    <!-- NAVIGAZIONE A TAB -->
+    <div class="tabs-container flex border-b border-gray-800 mb-6 overflow-x-auto whitespace-nowrap">
+        <button class="tab-btn active px-4 py-3 text-sm text-gray-400" onclick="switchTab('misure', this)">Misure</button>
+        <button class="tab-btn px-4 py-3 text-sm text-gray-400" onclick="switchTab('massimali', this)">Massimali</button>
+        <button class="tab-btn px-4 py-3 text-sm text-gray-400" onclick="switchTab('grafici', this)">Grafici</button>
+        <button class="tab-btn px-4 py-3 text-sm text-gray-400" onclick="switchTab('export', this)">Export</button>
+    </div>
+
+    <!-- ================= TAB 1: MISURE ================= -->
+    <div id="tab-misure" class="tab-content active space-y-4">
+        <!-- Radar Chart -->
+        <div class="bg-darkCard p-4 rounded-xl border border-gray-800 mb-4 flex justify-center">
+            <canvas id="radarChart" width="300" height="300"></canvas>
+        </div>
+
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800">
+            <h3 class="text-lg font-bold mb-4">Aggiorna Misure (cm)</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="text-xs text-gray-400">Peso (kg)</label><input type="number" id="mis-peso" step="0.1"></div>
+                <div><label class="text-xs text-gray-400">Petto (cm)</label><input type="number" id="mis-petto" step="0.1"></div>
+                <div><label class="text-xs text-gray-400">Braccia (cm)</label><input type="number" id="mis-braccia" step="0.1"></div>
+                <div><label class="text-xs text-gray-400">Vita (cm)</label><input type="number" id="mis-vita" step="0.1"></div>
+                <div><label class="text-xs text-gray-400">Gambe (cm)</label><input type="number" id="mis-gambe" step="0.1"></div>
+            </div>
+            <button onclick="salvaMisure()" class="w-full bg-brandOrange text-white font-bold py-3 rounded-lg mt-5 active:scale-95 transition">
+                Salva Misure del Mese
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= TAB 2: MASSIMALI ================= -->
+    <div id="tab-massimali" class="tab-content space-y-4">
+        <!-- Line Chart Massimali -->
+        <div class="bg-darkCard p-4 rounded-xl border border-gray-800 mb-4">
+            <h3 class="text-sm font-bold text-gray-300 mb-2">Andamento Massimali</h3>
+            <canvas id="maxChart" width="400" height="200"></canvas>
+        </div>
+
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800">
+            <h3 class="text-lg font-bold mb-4">I tuoi 1RM / Max Reps</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="text-xs text-gray-400">Pull-ups (Trazioni)</label><input type="number" id="max-pull"></div>
+                <div><label class="text-xs text-gray-400">Push-ups (Piegamenti)</label><input type="number" id="max-push"></div>
+                <div><label class="text-xs text-gray-400">Dips (Parallele)</label><input type="number" id="max-dip"></div>
+                <div><label class="text-xs text-gray-400">Pistol Squats (x Gamba)</label><input type="number" id="max-pistol"></div>
+            </div>
+            <button onclick="salvaMassimali()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg mt-5 active:scale-95 transition">
+                Registra Nuovo PR
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= TAB 3: GRAFICI ANALYTICS ================= -->
+    <div id="tab-grafici" class="tab-content">
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800 mb-6">
+            <h3 class="text-lg font-bold mb-1">Analisi Esercizio</h3>
+            <p class="text-xs text-gray-400 mb-4">Seleziona un esercizio per analizzare Rep Medie e Livello di Fatica (RPE).</p>
+            
+            <select id="ex-select" class="w-full bg-[#121212] text-white border border-gray-700 rounded-lg p-3 mb-6 focus:outline-none" onchange="disegnaGraficoAnalytics()">
+                <option value="">Seleziona Esercizio...</option>
+                <!-- Generato da JS -->
+            </select>
+
+            <!-- GRAFICO A (Rep Medie) -->
+            <div class="mb-8">
+                <h4 class="text-sm font-bold text-gray-300 mb-2 border-b border-gray-700 pb-1">Grafico A: Repetizioni Medie per Set</h4>
+                <canvas id="chartA" width="400" height="200"></canvas>
+            </div>
+
+            <!-- GRAFICO B (Dual Axis: Rep vs RPE) -->
+            <div>
+                <h4 class="text-sm font-bold text-gray-300 mb-2 border-b border-gray-700 pb-1">Grafico B: Rep Medie vs RPE Sessione</h4>
+                <canvas id="chartB" width="400" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TAB 4: EXPORT ================= -->
+    <div id="tab-export" class="tab-content">
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800 text-center space-y-4">
+            <i class="fa-solid fa-file-excel text-5xl text-green-600 mb-2"></i>
+            <h3 class="text-xl font-bold">Estrazione Dataset Completo</h3>
+            <p class="text-sm text-gray-400">Scarica il file XLSX contenente Storico, Misure e Massimali formattato per Pandas/Gemini.</p>
+            
+            <button onclick="esportaExcel()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg mt-4 active:scale-95 transition">
+                <i class="fa-solid fa-download mr-2"></i> Genera File Excel
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- VARIABILI GLOBALI E DATABASE ---
+        const storico = JSON.parse(localStorage.getItem('mastro_workout_history')) || [];
+        const misure = JSON.parse(localStorage.getItem('mastro_misure')) || [];
+        const massimali = JSON.parse(localStorage.getItem('mastro_massimali')) || [];
+        const dbSchede = JSON.parse(localStorage.getItem('mastro_schede')) || {}; // Per sapere i Set previsti
+
+        let radarChartInstance = null;
+        let maxChartInstance = null;
+        let chartAInstance = null;
+        let chartBInstance = null;
+
+        // Gestione Tabs
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            btn.classList.add('active');
+            
+            // Renderizza i grafici solo quando il tab è visibile per evitare bug di Chart.js
+            if(tabId === 'misure') disegnaRadar();
+            if(tabId === 'massimali') { popolaInputMassimali(); disegnaMaxChart(); }
+        }
+
+        // --- INIZIALIZZAZIONE DASHBOARD GLOBALE ---
+        function initDashboard() {
+            let totalWorkouts = storico.length;
+            let totalMinuti = 0;
+            let workoutsUltimi30Giorni = 0;
+            
+            const oggi = new Date();
+            const trentaGiorniFa = new Date();
+            trentaGiorniFa.setDate(oggi.getDate() - 30);
+
+            let eserciziUnici = new Set();
+
+            storico.forEach(s => {
+                // Calcolo TUT
+                if(s.durata) {
+                    let parts = s.durata.split(':');
+                    if(parts.length === 2) {
+                        totalMinuti += parseInt(parts[0]) + (parseInt(parts[1]) / 60);
+                    }
+                }
+                
+                // Calcolo Frequenza
+                let dataSess = new Date(s.data);
+                if(dataSess >= trentaGiorniFa) workoutsUltimi30Giorni++;
+
+                // Raccolta esercizi
+                for (const exName of Object.keys(s.dettagli)) {
+                    eserciziUnici.add(exName);
+                }
+            });
+
+            // Aggiorna KPI UI
+            document.getElementById('stat-workouts').innerText = totalWorkouts;
+            
+            let h = Math.floor(totalMinuti / 60);
+            let m = Math.round(totalMinuti % 60);
+            document.getElementById('stat-tut').innerText = `${h}h ${m}m`;
+            
+            let freqMedia = (workoutsUltimi30Giorni / 4.3).toFixed(1); // 4.3 settimane in un mese
+            document.getElementById('stat-freq').innerText = freqMedia;
+
+            // Popola tendina Grafici
+            const exSelect = document.getElementById('ex-select');
+            eserciziUnici.forEach(ex => {
+                let opt = document.createElement('option');
+                opt.value = ex;
+                opt.innerText = ex;
+                exSelect.appendChild(opt);
+            });
+
+            // Avvia i grafici dei tab aperti di default
+            disegnaRadar();
+        }
+
+        // --- TAB 1: MISURE E RADAR CHART ---
+        function salvaMisure() {
+            const nuovaMisura = {
+                data: new Date().toISOString().split('T')[0],
+                peso: parseFloat(document.getElementById('mis-peso').value) || 0,
+                petto: parseFloat(document.getElementById('mis-petto').value) || 0,
+                braccia: parseFloat(document.getElementById('mis-braccia').value) || 0,
+                vita: parseFloat(document.getElementById('mis-vita').value) || 0,
+                gambe: parseFloat(document.getElementById('mis-gambe').value) || 0
+            };
+            misure.push(nuovaMisura);
+            localStorage.setItem('mastro_misure', JSON.stringify(misure));
+            disegnaRadar();
+        }
+
+        function disegnaRadar() {
+            if (radarChartInstance) radarChartInstance.destroy();
+            
+            let dataCurrent = [0,0,0,0,0];
+            let dataPrev = [0,0,0,0,0];
+            
+            if (misure.length > 0) {
+                let curr = misure[misure.length - 1];
+                dataCurrent = [curr.petto, curr.braccia, curr.vita, curr.gambe, curr.peso];
+            }
+            if (misure.length > 1) {
+                let prev = misure[misure.length - 2];
+                dataPrev = [prev.petto, prev.braccia, prev.vita, prev.gambe, prev.peso];
+            }
+
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Petto', 'Braccia', 'Vita', 'Gambe', 'Peso'],
+                    datasets: [
+                        {
+                            label: 'Mese Corrente',
+                            data: dataCurrent,
+                            backgroundColor: 'rgba(0, 123, 255, 0.4)',
+                            borderColor: 'rgba(0, 123, 255, 1)',
+                            pointBackgroundColor: '#fff',
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Mese Precedente',
+                            data: dataPrev,
+                            backgroundColor: 'rgba(220, 53, 69, 0.3)',
+                            borderColor: 'rgba(220, 53, 69, 0.8)',
+                            pointBackgroundColor: '#fff',
+                            borderWidth: 1,
+                            borderDash: [5, 5] // Linea tratteggiata per il passato
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { r: { angleLines: { color: '#444' }, grid: { color: '#444' }, pointLabels: { color: '#ccc', font: {size: 12} }, ticks: { display: false } } },
+                    plugins: { legend: { labels: { color: '#fff' }, position: 'bottom' } }
+                }
+            });
+        }
+
+        // --- TAB 2: MASSIMALI ---
+        function popolaInputMassimali() {
+            if(massimali.length > 0) {
+                let last = massimali[massimali.length - 1];
+                document.getElementById('max-pull').value = last.pull || 0;
+                document.getElementById('max-push').value = last.push || 0;
+                document.getElementById('max-dip').value = last.dip || 0;
+                document.getElementById('max-pistol').value = last.pistol || 0;
+            }
+        }
+
+        function salvaMassimali() {
+            const nuovoMax = {
+                data: new Date().toISOString().split('T')[0],
+                pull: parseInt(document.getElementById('max-pull').value) || 0,
+                push: parseInt(document.getElementById('max-push').value) || 0,
+                dip: parseInt(document.getElementById('max-dip').value) || 0,
+                pistol: parseInt(document.getElementById('max-pistol').value) || 0
+            };
+            massimali.push(nuovoMax);
+            localStorage.setItem('mastro_massimali', JSON.stringify(massimali));
+            disegnaMaxChart();
+        }
+
+        function disegnaMaxChart() {
+            if (maxChartInstance) maxChartInstance.destroy();
+            
+            let date = massimali.map(m => m.data);
+            let pulls = massimali.map(m => m.pull);
+            let pushes = massimali.map(m => m.push);
+            let dips = massimali.map(m => m.dip);
+
+            const ctx = document.getElementById('maxChart').getContext('2d');
+            maxChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: date,
+                    datasets: [
+                        { label: 'Push-ups', data: pushes, borderColor: '#ff8c00', tension: 0.3 },
+                        { label: 'Dips', data: dips, borderColor: '#007bff', tension: 0.3 },
+                        { label: 'Pull-ups', data: pulls, borderColor: '#28a745', tension: 0.3 }
+                    ]
+                },
+                options: { responsive: true, scales: { x: { ticks: {color: '#999'} }, y: { ticks: {color: '#999'}, grid: {color: '#333'} } }, plugins: { legend: { labels: {color: '#fff', boxWidth: 12} } } }
+            });
+        }
+
+        // --- TAB 3: GRAFICI ANALYTICS ---
+        function getSetsForExercise(exName) {
+            // Cerca nel database delle schede quanti set erano previsti per calcolare la media
+            for (const key in dbSchede) {
+                let found = dbSchede[key].find(e => e.nome === exName);
+                if (found) return found.set;
+            }
+            return 3; // Default se per qualche motivo non lo trova
+        }
+
+        function disegnaGraficoAnalytics() {
+            const exScelto = document.getElementById('ex-select').value;
+            if(!exScelto) return;
+
+            let date = [];
+            let avgReps = [];
+            let rpeSessione = [];
+
+            const numSets = getSetsForExercise(exScelto);
+
+            storico.forEach(sessione => {
+                if(sessione.dettagli[exScelto]) {
+                    date.push(sessione.data);
+                    
+                    // Calcolo Rep Medie (Totale rep / Numero di set)
+                    let media = (sessione.dettagli[exScelto] / numSets).toFixed(1);
+                    avgReps.push(media);
+                    
+                    // RPE
+                    rpeSessione.push(sessione.rpeMedio === "N/A" ? 0 : parseFloat(sessione.rpeMedio));
+                }
+            });
+
+            // GRAFICO A (Solo Rep Medie)
+            if (chartAInstance) chartAInstance.destroy();
+            const ctxA = document.getElementById('chartA').getContext('2d');
+            chartAInstance = new Chart(ctxA, {
+                type: 'bar',
+                data: {
+                    labels: date,
+                    datasets: [{
+                        label: `Rep Medie per Set`,
+                        data: avgReps,
+                        backgroundColor: '#ff8c00',
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, scales: { x: { grid: {display:false}, ticks: {color:'#999'} }, y: { ticks: {color:'#999'}, grid: {color:'#333'} } }, plugins: { legend: { display: false } } }
+            });
+
+            // GRAFICO B (Dual Axis: Rep vs RPE)
+            if (chartBInstance) chartBInstance.destroy();
+            const ctxB = document.getElementById('chartB').getContext('2d');
+            chartBInstance = new Chart(ctxB, {
+                type: 'line',
+                data: {
+                    labels: date,
+                    datasets: [
+                        {
+                            label: 'Rep Medie',
+                            data: avgReps,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            yAxisID: 'y',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'RPE Sessione',
+                            data: rpeSessione,
+                            borderColor: '#dc3545',
+                            borderDash: [5, 5],
+                            yAxisID: 'y1',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { ticks: {color:'#999'}, grid: {display: false} },
+                        y: { type: 'linear', display: true, position: 'left', title: {display:true, text:'Rep Medie', color:'#007bff'}, ticks: {color:'#007bff'}, grid: {color:'#333'} },
+                        y1: { type: 'linear', display: true, position: 'right', title: {display:true, text:'RPE (1-10)', color:'#dc3545'}, ticks: {color:'#dc3545', max: 10}, grid: {drawOnChartArea: false} }
+                    },
+                    plugins: { legend: { labels: { color: '#fff' } } }
+                }
+            });
+        }
+
+        // --- TAB 4: EXPORT EXCEL ---
+        function esportaExcel() {
+            if(storico.length === 0) { alert("Nessun dato da esportare."); return; }
+
+            // 1. Foglio Allenamenti (Calcola anche le rep medie)
+            let datiAllenamentiFlat = [];
+            storico.forEach(sess => {
+                for (const [ex, repTotali] of Object.entries(sess.dettagli)) {
+                    let sets = getSetsForExercise(ex);
+                    datiAllenamentiFlat.push({
+                        Data: sess.data,
+                        Scheda: sess.scheda,
+                        Esercizio: ex,
+                        Ripetizioni_Totali: repTotali,
+                        Set_Stimati: sets,
+                        Rep_Medie: (repTotali / sets).toFixed(1),
+                        RPE_Medio_Sessione: sess.rpeMedio,
+                        Durata_Sessione: sess.durata || "N/A"
+                    });
+                }
+            });
+
+            const wsAllenamenti = XLSX.utils.json_to_sheet(datiAllenamentiFlat);
+            const wsMisure = XLSX.utils.json_to_sheet(misure.length > 0 ? misure : [{Info: "Nessuna misura"}]);
+            const wsMassimali = XLSX.utils.json_to_sheet(massimali.length > 0 ? massimali : [{Info: "Nessun massimale"}]);
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, wsAllenamenti, "Storico Allenamenti");
+            XLSX.utils.book_append_sheet(wb, wsMisure, "Misure Corporee");
+            XLSX.utils.book_append_sheet(wb, wsMassimali, "Massimali");
+
+            XLSX.writeFile(wb, "MastroFit_Data_Export.xlsx");
+        }
+
+        // Avvio
+        initDashboard();
+    </script>
+</body>
+</html>
