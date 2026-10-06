@@ -6,7 +6,14 @@
     <title>MastroFit - Calisthenics Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: '#ff8c00' } } } }</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Configurazione Tema Dinamico -->
+    <script>
+        const themeColor = localStorage.getItem('mastro_theme_color') || '#ff8c00';
+        tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: themeColor } } } };
+    </script>
+
     <style>
         body { background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
         .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
@@ -16,22 +23,24 @@
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 10px; }
         .day-box { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; background-color: #2a2a2a; color: #777; transition: all 0.3s ease; }
         .empty-box { background: transparent; }
-        .color-0 { background-color: #ff8c00 !important; color: #fff !important; }
+        
+        /* Tema Colori Calendario (Tonalità 0 è quella dinamica) */
+        .color-0 { background-color: var(--theme-color, #ff8c00) !important; color: #fff !important; }
         .color-1 { background-color: #007bff !important; color: #fff !important; }
         .color-2 { background-color: #28a745 !important; color: #fff !important; }
         .color-3 { background-color: #dc3545 !important; color: #fff !important; }
         .today { border: 2px solid #ffffff; color: #ffffff; }
         
         input, select { background-color: #121212; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; width: 100%; margin-top: 5px; }
-        input[type="checkbox"] { width: auto; margin-right: 10px; transform: scale(1.3); accent-color: #ff8c00; }
-        input:focus, select:focus { outline: none; border-color: #ff8c00; }
+        input[type="checkbox"] { width: auto; margin-right: 10px; transform: scale(1.3); accent-color: var(--theme-color, #ff8c00); }
+        input:focus, select:focus { outline: none; border-color: var(--theme-color, #ff8c00); }
 
-        /* Stili per Tabella Progressioni */
         .status-ok { background-color: #16a34a; color: white; }
         .status-attuale { background-color: #eab308; color: black; }
         .status-vuoto { background-color: #333; color: #777; }
-        .editable-text:hover { color: #ff8c00; cursor: pointer; }
+        .editable-text:hover { color: var(--theme-color, #ff8c00); cursor: pointer; }
     </style>
+    <script>document.documentElement.style.setProperty('--theme-color', themeColor);</script>
 </head>
 <body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-20">
 
@@ -47,6 +56,10 @@
         </button>
 
         <div class="space-y-4">
+            <div onclick="switchView('view-tracker')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
+                <div class="w-14 h-14 rounded-full bg-brandOrange/20 flex items-center justify-center text-brandOrange mr-4"><i class="fa-solid fa-play text-2xl"></i></div>
+                <div><h3 class="text-xl font-bold text-white">Inizia Allenamento</h3><p class="text-sm text-gray-400">Traccia la sessione di oggi</p></div>
+            </div>
             <div onclick="switchView('view-editor')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
                 <div class="w-14 h-14 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-500 mr-4"><i class="fa-solid fa-pen-to-square text-2xl"></i></div>
                 <div><h3 class="text-xl font-bold text-white">Gestione Schede</h3><p class="text-sm text-gray-400">Modifica, aggiungi o rimuovi esercizi</p></div>
@@ -57,14 +70,16 @@
                 <div><h3 class="text-xl font-bold text-white">Progressioni Skill</h3><p class="text-sm text-gray-400">Traccia Front Lever, Planche, ecc.</p></div>
             </div>
 
-            <div onclick="switchView('view-tracker')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
-                <div class="w-14 h-14 rounded-full bg-brandOrange/20 flex items-center justify-center text-brandOrange mr-4"><i class="fa-solid fa-play text-2xl"></i></div>
-                <div><h3 class="text-xl font-bold text-white">Inizia Allenamento</h3><p class="text-sm text-gray-400">Traccia la sessione di oggi</p></div>
+            <!-- NUOVA CARD: STATISTICHE E RECORD -->
+            <div onclick="switchView('view-analytics')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
+                <div class="w-14 h-14 rounded-full bg-purple-900/30 flex items-center justify-center text-purple-500 mr-4"><i class="fa-solid fa-chart-line text-2xl"></i></div>
+                <div><h3 class="text-xl font-bold text-white">Statistiche & Record</h3><p class="text-sm text-gray-400">Massimali e andamento volume</p></div>
             </div>
+
         </div>
     </main>
 
-    <!-- VISTA 2: ACHIEVEMENTS (TABELLA EXCEL) -->
+    <!-- VISTA 2: ACHIEVEMENTS -->
     <main id="view-achievements" class="view-section">
         <div class="flex justify-between items-center mb-6">
             <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white flex items-center text-sm font-semibold transition">
@@ -74,7 +89,6 @@
                 <i class="fa-solid fa-pen mr-1"></i> Modifica
             </button>
         </div>
-
         <div class="flex justify-between items-end mb-6">
             <div>
                 <h3 class="text-2xl font-bold text-brandOrange">Progressioni</h3>
@@ -84,16 +98,12 @@
                 <i class="fa-solid fa-plus mr-1"></i> Skill
             </button>
         </div>
-
-        <div id="achievements-container" class="space-y-6">
-            <!-- Tabella generata da JS -->
-        </div>
+        <div id="achievements-container" class="space-y-6"></div>
     </main>
 
     <!-- VISTA 3: EDITOR SCHEDE -->
     <main id="view-editor" class="view-section">
         <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition"><i class="fa-solid fa-arrow-left mr-2"></i> Indietro</button>
-        
         <div class="bg-darkCard p-5 rounded-xl shadow-lg border border-gray-800 mb-6">
             <select id="edit-scheda-select" onchange="renderEditor()" class="mb-4"></select>
             <div class="flex space-x-2">
@@ -102,19 +112,15 @@
                 <button onclick="eliminaScheda()" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-trash mb-1 block text-lg"></i> Elimina</button>
             </div>
         </div>
-
         <div id="editor-list" class="space-y-3 mb-6"></div>
-
         <div id="editor-form-card" class="bg-darkCard p-5 rounded-xl border border-gray-800 hidden">
             <h3 id="editor-title" class="text-lg font-bold mb-3 text-brandOrange">Aggiungi Nuovo Esercizio</h3>
             <div class="space-y-3">
                 <input type="text" id="new-ex-nome" placeholder="Nome Esercizio (es. Dips)">
-                
                 <div class="flex items-center bg-[#121212] border border-gray-700 p-3 rounded-lg">
                     <input type="checkbox" id="new-ex-istime">
                     <label for="new-ex-istime" class="text-sm font-bold text-gray-300">Esercizio a Tempo (Sec invece di Rep)</label>
                 </div>
-
                 <div class="grid grid-cols-2 gap-3">
                     <input type="number" id="new-ex-set" placeholder="N° Set (es. 4)">
                     <input type="text" id="new-ex-tgt" placeholder="Target (es. 8 rep o 30 sec)">
@@ -134,20 +140,17 @@
     <!-- VISTA 4: TRACKER E CALENDARIO -->
     <main id="view-tracker" class="view-section">
         <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition"><i class="fa-solid fa-arrow-left mr-2"></i> Indietro</button>
-
         <div class="bg-darkCard p-4 rounded-xl mb-6 shadow-lg border border-gray-800">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold">Storico Mensile</h3>
                 <span id="mese-corrente" class="text-xs font-semibold bg-gray-800 px-3 py-1 rounded-full text-gray-300"></span>
             </div>
             <div id="calendar-legend" class="flex flex-wrap gap-2 mb-4 text-[10px] font-bold uppercase tracking-wider"></div>
-            
             <div class="grid grid-columns-7 grid-cols-7 gap-2 mb-2 text-center text-xs text-gray-500 font-bold">
                 <div>L</div><div>M</div><div>M</div><div>G</div><div>V</div><div>S</div><div>D</div>
             </div>
             <div id="calendar-grid" class="calendar-grid"></div>
         </div>
-
         <div class="bg-darkCard p-5 rounded-xl shadow-lg border border-gray-800">
             <label class="block text-sm font-semibold text-gray-400 mb-2">Seleziona Scheda</label>
             <select id="scheda-select" class="mb-6"></select>
@@ -155,8 +158,56 @@
         </div>
     </main>
 
+    <!-- VISTA 5: STATISTICHE E RECORD -->
+    <main id="view-analytics" class="view-section">
+        <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition"><i class="fa-solid fa-arrow-left mr-2"></i> Indietro</button>
+        
+        <!-- Grafico Massimali 1RM / Max Reps -->
+        <div class="bg-darkCard p-4 rounded-xl border border-gray-800 mb-6">
+            <h3 class="text-sm font-bold text-gray-300 mb-2">Andamento "Big 4"</h3>
+            <canvas id="maxChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Input Massimali -->
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800 mb-6">
+            <h3 class="text-lg font-bold mb-4">I tuoi Personal Record</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="text-xs text-gray-400">Pull-ups (Max Rep)</label><input type="number" id="max-pull" step="1"></div>
+                <div><label class="text-xs text-gray-400">Dips (Max Rep)</label><input type="number" id="max-dips" step="1"></div>
+                <div><label class="text-xs text-gray-400">Push-ups (Max Rep)</label><input type="number" id="max-push" step="1"></div>
+                <div><label class="text-xs text-gray-400">Muscle-ups (Max Rep)</label><input type="number" id="max-mu" step="1"></div>
+            </div>
+            <button onclick="salvaMassimali()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg mt-5 active:scale-95 transition">
+                Registra Nuovo PR
+            </button>
+        </div>
+
+        <!-- Analisi Volume Singolo Esercizio -->
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800 mb-6">
+            <h3 class="text-lg font-bold mb-1">Analisi Dettagliata Volume</h3>
+            <p class="text-xs text-gray-400 mb-4">Seleziona un esercizio per vedere l'andamento del volume totale (Reps o Secondi) nelle sessioni.</p>
+            <select id="ex-select" class="w-full bg-[#121212] text-white border border-gray-700 rounded-lg p-3 mb-6 focus:outline-none" onchange="disegnaGraficoAnalytics()">
+                <option value="">Seleziona Esercizio...</option>
+                <!-- Generato da JS -->
+            </select>
+
+            <div class="mb-4">
+                <canvas id="chartVolume" width="400" height="250"></canvas>
+            </div>
+        </div>
+    </main>
+
     <script>
-        // --- DATABASE INIZIALE SCHEDE ---
+        // RECUPERO VARIABILE COLORE PER I GRAFICI JS
+        const currentThemeColor = localStorage.getItem('mastro_theme_color') || '#ff8c00';
+
+        let maxChartInstance = null;
+        let chartVolumeInstance = null;
+
+        const storicoCali = JSON.parse(localStorage.getItem('mastro_workout_history')) || [];
+        const massimali = JSON.parse(localStorage.getItem('mastro_massimali')) || [];
+
+        // Inizializza DB Schede se vuoto
         if (!localStorage.getItem('mastro_schede')) {
             localStorage.setItem('mastro_schede', JSON.stringify({
                 'A': [{ nome: 'Pike Push-ups', set: 4, target: '5-6 rep', rec: '2 min', recSec: 120, isTime: false }],
@@ -164,45 +215,112 @@
             }));
         }
 
-        // --- DATABASE INIZIALE ACHIEVEMENTS ---
+        // Inizializza DB Achievements se vuoto
         const defaultAchievements = [
-            { skill: "FRONT LEVER", color: "bg-blue-800", steps: [
-                { step: "Tuck Front Lever", desc: "Ginocchia al petto, corpo raccolto", status: "OK" },
-                { step: "Advanced Tuck Front Lever", desc: "Ginocchia leggermente aperte/estese", status: "ATTUALE" },
-                { step: "Straddle Front Lever", desc: "Gambe dritte e larghe, corpo quasi disteso", status: "" },
-                { step: "Half Lay Front Lever", desc: "Gambe unite, piegate a metà", status: "" },
-                { step: "Full Front Lever", desc: "Corpo completamente disteso e orizzontale", status: "" }
-            ]},
-            { skill: "PLANCHE", color: "bg-purple-800", steps: [
-                { step: "Tuck Planche", desc: "Ginocchia al petto, bacino sopra le mani", status: "OK" },
-                { step: "Advanced Tuck Planche", desc: "Ginocchia estese, bacino più alto", status: "ATTUALE" },
-                { step: "Straddle Planche", desc: "Gambe dritte e larghe", status: "" },
-                { step: "Full Planche", desc: "Corpo completamente disteso", status: "" }
-            ]},
-            { skill: "MUSCLE-UP", color: "bg-red-800", steps: [
-                { step: "False grip hang + dip esplosivi", desc: "Base di forza e presa", status: "ATTUALE" },
-                { step: "Muscle-up negative", desc: "Discesa lenta controllata", status: "ATTUALE" },
-                { step: "Muscle-up assistito", desc: "Transizione guidata", status: "" },
-                { step: "Muscle-up strict singolo", desc: "Transizione senza slancio", status: "" }
-            ]}
+            { skill: "FRONT LEVER", color: "bg-blue-800", steps: [{ step: "Tuck Front Lever", desc: "Corpo raccolto", status: "OK" }, { step: "Advanced Tuck Front Lever", desc: "Ginocchia aperte", status: "ATTUALE" }] },
+            { skill: "PLANCHE", color: "bg-purple-800", steps: [{ step: "Tuck Planche", desc: "Ginocchia al petto", status: "OK" }, { step: "Advanced Tuck Planche", desc: "Bacino alto", status: "ATTUALE" }] },
+            { skill: "MUSCLE-UP", color: "bg-red-800", steps: [{ step: "False grip hang", desc: "Base presa", status: "ATTUALE" }, { step: "Muscle-up negative", desc: "Discesa lenta", status: "ATTUALE" }] }
         ];
+        if(!localStorage.getItem('mastro_achievements')) localStorage.setItem('mastro_achievements', JSON.stringify(defaultAchievements));
 
-        if(!localStorage.getItem('mastro_achievements')) {
-            localStorage.setItem('mastro_achievements', JSON.stringify(defaultAchievements));
-        }
-
-        // --- LOGICA DI NAVIGAZIONE GLOBALE ---
+        // --- NAVIGAZIONE ---
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             
-            // Resetta lo stato di modifica quando cambi tab
             isEditingAchievements = false; 
             
             if(viewId === 'view-editor') { aggiornaDropdownSchede(); annullaModifica(); renderEditor(); }
             if(viewId === 'view-tracker') { aggiornaDropdownSchede(); generaCalendario(); }
             if(viewId === 'view-achievements') { setupEditModeUI(); renderAchievements(); }
+            if(viewId === 'view-analytics') { popolaInputMassimali(); disegnaMaxChart(); popolaSelectEsercizi(); }
+            
             window.scrollTo(0,0);
+        }
+
+        // --- SEZIONE STATISTICHE E RECORD (NUOVA) ---
+        function popolaInputMassimali() {
+            if(massimali.length > 0) {
+                let last = massimali[massimali.length - 1];
+                document.getElementById('max-pull').value = last.pull || 0;
+                document.getElementById('max-dips').value = last.dips || 0;
+                document.getElementById('max-push').value = last.push || 0;
+                document.getElementById('max-mu').value = last.mu || 0;
+            }
+        }
+
+        function salvaMassimali() {
+            const nuovoMax = {
+                data: new Date().toISOString().split('T')[0],
+                pull: parseInt(document.getElementById('max-pull').value) || 0,
+                dips: parseInt(document.getElementById('max-dips').value) || 0,
+                push: parseInt(document.getElementById('max-push').value) || 0,
+                mu: parseInt(document.getElementById('max-mu').value) || 0
+            };
+            massimali.push(nuovoMax);
+            localStorage.setItem('mastro_massimali', JSON.stringify(massimali));
+            disegnaMaxChart();
+        }
+
+        function disegnaMaxChart() {
+            if (maxChartInstance) maxChartInstance.destroy();
+            let date = massimali.map(m => m.data);
+            let pulls = massimali.map(m => m.pull); let dips = massimali.map(m => m.dips);
+            let pushes = massimali.map(m => m.push); let mus = massimali.map(m => m.mu);
+
+            const ctx = document.getElementById('maxChart').getContext('2d');
+            maxChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: date,
+                    datasets: [
+                        { label: 'Pull-ups', data: pulls, borderColor: currentThemeColor, tension: 0.3 },
+                        { label: 'Dips', data: dips, borderColor: '#00bcd4', tension: 0.3 },
+                        { label: 'Push-ups', data: pushes, borderColor: '#4caf50', tension: 0.3 },
+                        { label: 'Muscle-ups', data: mus, borderColor: '#ff1493', tension: 0.3 }
+                    ]
+                },
+                options: { responsive: true, scales: { x: { ticks: {color: '#999'} }, y: { ticks: {color: '#999'}, grid: {color: '#333'} } }, plugins: { legend: { labels: {color: '#fff', boxWidth: 12} } } }
+            });
+        }
+
+        function popolaSelectEsercizi() {
+            let eserciziUnici = new Set();
+            storicoCali.forEach(sess => {
+                if(sess.dettagli) Object.keys(sess.dettagli).forEach(ex => eserciziUnici.add(ex));
+            });
+            const exSelect = document.getElementById('ex-select');
+            exSelect.innerHTML = '<option value="">Seleziona Esercizio...</option>';
+            eserciziUnici.forEach(ex => {
+                let opt = document.createElement('option');
+                opt.value = ex; opt.innerText = ex;
+                exSelect.appendChild(opt);
+            });
+        }
+
+        function disegnaGraficoAnalytics() {
+            const exScelto = document.getElementById('ex-select').value;
+            if(!exScelto) return;
+
+            let date = []; let totalVolume = [];
+
+            storicoCali.forEach(sessione => {
+                if(sessione.dettagli && sessione.dettagli[exScelto] !== undefined) {
+                    date.push(sessione.data);
+                    totalVolume.push(sessione.dettagli[exScelto]);
+                }
+            });
+
+            if (chartVolumeInstance) chartVolumeInstance.destroy();
+            const ctxV = document.getElementById('chartVolume').getContext('2d');
+            chartVolumeInstance = new Chart(ctxV, {
+                type: 'bar',
+                data: {
+                    labels: date,
+                    datasets: [{ label: `Volume Totale (${exScelto})`, data: totalVolume, backgroundColor: currentThemeColor + '99', borderColor: currentThemeColor, borderWidth: 1 }]
+                },
+                options: { responsive: true, scales: { x: { grid: {display:false}, ticks: {color:'#999'} }, y: { ticks: {color:currentThemeColor}, grid: {color:'#333'} } }, plugins: { legend: { labels: {color: '#fff'} } } }
+            });
         }
 
         // --- GESTIONE ACHIEVEMENTS (TABELLE E MODIFICA) ---
@@ -211,8 +329,7 @@
 
         function toggleEditAchievements() {
             isEditingAchievements = !isEditingAchievements;
-            setupEditModeUI();
-            renderAchievements();
+            setupEditModeUI(); renderAchievements();
         }
 
         function setupEditModeUI() {
@@ -242,8 +359,6 @@
 
             db.forEach((gruppo, gIndex) => {
                 let rowsHtml = '';
-                
-                // Generazione singole righe (Steps)
                 gruppo.steps.forEach((s, sIndex) => {
                     if (isEditingAchievements) {
                         rowsHtml += `
@@ -274,119 +389,80 @@
                     }
                 });
 
-                // Tasto aggiungi step (solo in edit mode)
-                let addStepRow = isEditingAchievements ? `
-                    <div class="p-2 text-center bg-[#1a1a1a] cursor-pointer text-green-500 font-bold text-xs hover:bg-[#252525] transition" onclick="aggiungiStep(${gIndex})">
-                        <i class="fa-solid fa-plus mr-1"></i> Aggiungi Step
-                    </div>
-                ` : '';
-
-                // Header della tabella (Skill)
-                let headerContent = isEditingAchievements ? `
-                    <div class="flex justify-between items-center">
-                        <span class="cursor-pointer editable-text flex-1" onclick="rinominaSkill(${gIndex})">
-                            ${gruppo.skill} <i class="fa-solid fa-pen ml-2 text-xs opacity-70"></i>
-                        </span>
-                        <i class="fa-solid fa-trash text-white/70 hover:text-red-500 cursor-pointer ml-4 p-1" onclick="eliminaSkill(${gIndex})"></i>
-                    </div>
-                ` : `${gruppo.skill}`;
+                let addStepRow = isEditingAchievements ? `<div class="p-2 text-center bg-[#1a1a1a] cursor-pointer text-green-500 font-bold text-xs hover:bg-[#252525] transition" onclick="aggiungiStep(${gIndex})"><i class="fa-solid fa-plus mr-1"></i> Aggiungi Step</div>` : '';
+                let headerContent = isEditingAchievements ? `<div class="flex justify-between items-center"><span class="cursor-pointer editable-text flex-1" onclick="rinominaSkill(${gIndex})">${gruppo.skill} <i class="fa-solid fa-pen ml-2 text-xs opacity-70"></i></span><i class="fa-solid fa-trash text-white/70 hover:text-red-500 cursor-pointer ml-4 p-1" onclick="eliminaSkill(${gIndex})"></i></div>` : `${gruppo.skill}`;
 
                 container.innerHTML += `
                     <div class="bg-darkCard border border-gray-800 rounded-xl overflow-hidden shadow-lg ${isEditingAchievements ? 'border-dashed border-2 border-gray-600' : ''}">
-                        <div class="${gruppo.color} p-3 font-black tracking-widest text-white">
-                            ${headerContent}
-                        </div>
+                        <div class="${gruppo.color} p-3 font-black tracking-widest text-white">${headerContent}</div>
                         <div class="bg-[#222] flex text-[10px] uppercase font-bold text-gray-500 border-b border-gray-700">
-                            <div class="w-1/3 p-2 border-r border-gray-700">Step</div>
-                            <div class="w-1/2 p-2">Descrizione</div>
-                            <div class="w-1/6 p-2 text-center">${isEditingAchievements ? 'Azione' : 'Stato'}</div>
+                            <div class="w-1/3 p-2 border-r border-gray-700">Step</div><div class="w-1/2 p-2">Descrizione</div><div class="w-1/6 p-2 text-center">${isEditingAchievements ? 'Azione' : 'Stato'}</div>
                         </div>
-                        ${rowsHtml}
-                        ${addStepRow}
+                        ${rowsHtml} ${addStepRow}
                     </div>
                 `;
             });
         }
 
-        // Funzioni CRUD per Achievements
         function cambiaStatoAchievement(gIndex, sIndex) {
-            if (isEditingAchievements) return; // Disabilitato in edit mode
+            if (isEditingAchievements) return;
             let db = JSON.parse(localStorage.getItem('mastro_achievements'));
             let current = db[gIndex].steps[sIndex].status;
-            
             if(current === "") db[gIndex].steps[sIndex].status = "ATTUALE";
             else if(current === "ATTUALE") db[gIndex].steps[sIndex].status = "OK";
             else db[gIndex].steps[sIndex].status = "";
-
-            localStorage.setItem('mastro_achievements', JSON.stringify(db));
-            renderAchievements();
+            localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
         }
-
         function aggiungiSkill() {
-            const nome = prompt("Nome della nuova Skill (es. HUMAN FLAG):");
+            const nome = prompt("Nome della nuova Skill:");
             if(nome && nome.trim() !== "") {
                 let db = JSON.parse(localStorage.getItem('mastro_achievements'));
-                let nextColor = skillColors[db.length % skillColors.length];
-                db.push({ skill: nome.toUpperCase().trim(), color: nextColor, steps: [] });
-                localStorage.setItem('mastro_achievements', JSON.stringify(db));
-                renderAchievements();
+                db.push({ skill: nome.toUpperCase().trim(), color: skillColors[db.length % skillColors.length], steps: [] });
+                localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
             }
         }
-
         function rinominaSkill(gIndex) {
             let db = JSON.parse(localStorage.getItem('mastro_achievements'));
             const nuovoNome = prompt("Nuovo nome della Skill:", db[gIndex].skill);
             if(nuovoNome && nuovoNome.trim() !== "") {
                 db[gIndex].skill = nuovoNome.toUpperCase().trim();
-                localStorage.setItem('mastro_achievements', JSON.stringify(db));
-                renderAchievements();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
             }
         }
-
         function eliminaSkill(gIndex) {
-            if(confirm("Sei sicuro di voler eliminare interamente questa Skill e tutti i suoi step?")) {
+            if(confirm("Eliminare interamente questa Skill e i suoi step?")) {
                 let db = JSON.parse(localStorage.getItem('mastro_achievements'));
                 db.splice(gIndex, 1);
-                localStorage.setItem('mastro_achievements', JSON.stringify(db));
-                renderAchievements();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
             }
         }
-
         function aggiungiStep(gIndex) {
-            const stepName = prompt("Nome del nuovo step (es. Advanced Tuck):");
+            const stepName = prompt("Nome del nuovo step:");
             if(stepName && stepName.trim() !== "") {
-                const desc = prompt("Descrizione dello step (opzionale):") || "";
+                const desc = prompt("Descrizione:") || "";
                 let db = JSON.parse(localStorage.getItem('mastro_achievements'));
                 db[gIndex].steps.push({ step: stepName.trim(), desc: desc.trim(), status: "" });
-                localStorage.setItem('mastro_achievements', JSON.stringify(db));
-                renderAchievements();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
             }
         }
-
         function modificaStepText(gIndex, sIndex, campo) {
             let db = JSON.parse(localStorage.getItem('mastro_achievements'));
-            const oldVal = db[gIndex].steps[sIndex][campo];
-            let label = campo === 'step' ? 'il nome dello step' : 'la descrizione';
-            const newVal = prompt(`Modifica ${label}:`, oldVal);
-            
-            if(newVal !== null) { // Permette di svuotare la descrizione ma non il nome
-                if (campo === 'step' && newVal.trim() === "") return; // Ignora se nome vuoto
+            const newVal = prompt(`Modifica:`, db[gIndex].steps[sIndex][campo]);
+            if(newVal !== null) {
+                if (campo === 'step' && newVal.trim() === "") return;
                 db[gIndex].steps[sIndex][campo] = newVal.trim();
-                localStorage.setItem('mastro_achievements', JSON.stringify(db));
-                renderAchievements();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
             }
         }
-
         function eliminaStep(gIndex, sIndex) {
-            if(confirm("Vuoi eliminare definitivamente questo step?")) {
+            if(confirm("Vuoi eliminare questo step?")) {
                 let db = JSON.parse(localStorage.getItem('mastro_achievements'));
                 db[gIndex].steps.splice(sIndex, 1);
-                localStorage.setItem('mastro_achievements', JSON.stringify(db));
-                renderAchievements();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db)); renderAchievements();
             }
         }
 
-        // --- RESTANTE LOGICA (EDITOR SCHEDE, CALENDARIO) ---
+        // --- GESTIONE EDITOR SCHEDE ---
         let editModeIndex = -1;
         const classiColori = ['color-0', 'color-1', 'color-2', 'color-3'];
         
@@ -397,7 +473,7 @@
             const selectAvvia = document.getElementById('scheda-select');
             const valEdit = selectEdit.value; const valAvvia = selectAvvia.value;
             selectEdit.innerHTML = ''; selectAvvia.innerHTML = '';
-            nomiSchede.forEach((nome) => {
+            nomiSchede.forEach(nome => {
                 selectEdit.innerHTML += `<option value="${nome}">${nome}</option>`;
                 selectAvvia.innerHTML += `<option value="${nome}">${nome}</option>`;
             });
@@ -409,30 +485,21 @@
         function creaScheda() {
             let db = JSON.parse(localStorage.getItem('mastro_schede'));
             const nome = prompt("Nome nuova scheda:");
-            if(nome && !db[nome]) {
-                db[nome] = []; localStorage.setItem('mastro_schede', JSON.stringify(db));
-                aggiornaDropdownSchede(); document.getElementById('edit-scheda-select').value = nome; renderEditor();
-            }
+            if(nome && !db[nome]) { db[nome] = []; localStorage.setItem('mastro_schede', JSON.stringify(db)); aggiornaDropdownSchede(); renderEditor(); }
         }
         function rinominaScheda() {
             const oldName = document.getElementById('edit-scheda-select').value;
             const newName = prompt("Nuovo nome:", oldName);
             if(newName && newName !== oldName) {
                 let db = JSON.parse(localStorage.getItem('mastro_schede'));
-                if(db[newName]) return;
-                db[newName] = db[oldName]; delete db[oldName];
-                localStorage.setItem('mastro_schede', JSON.stringify(db));
-                aggiornaDropdownSchede(); document.getElementById('edit-scheda-select').value = newName; renderEditor();
+                if(!db[newName]) { db[newName] = db[oldName]; delete db[oldName]; localStorage.setItem('mastro_schede', JSON.stringify(db)); aggiornaDropdownSchede(); renderEditor(); }
             }
         }
         function eliminaScheda() {
             const nome = document.getElementById('edit-scheda-select').value;
             let db = JSON.parse(localStorage.getItem('mastro_schede'));
             if(Object.keys(db).length <= 1) return;
-            if(confirm(`Eliminare la scheda "${nome}"?`)) {
-                delete db[nome]; localStorage.setItem('mastro_schede', JSON.stringify(db));
-                aggiornaDropdownSchede(); renderEditor();
-            }
+            if(confirm(`Eliminare la scheda "${nome}"?`)) { delete db[nome]; localStorage.setItem('mastro_schede', JSON.stringify(db)); aggiornaDropdownSchede(); renderEditor(); }
         }
 
         function renderEditor() {
@@ -445,10 +512,7 @@
                 let tipo = ex.isTime ? '<span class="text-[10px] bg-blue-600 text-white px-1 rounded ml-1">TEMPO</span>' : '';
                 lista.innerHTML += `
                     <div class="bg-darkBg p-3 rounded-lg border border-gray-800 flex justify-between items-center">
-                        <div>
-                            <p class="font-bold text-white text-sm">${ex.nome} ${tipo}</p>
-                            <p class="text-xs text-gray-400">${ex.set} Set | ${ex.target} | Rec: ${ex.rec}</p>
-                        </div>
+                        <div><p class="font-bold text-white text-sm">${ex.nome} ${tipo}</p><p class="text-xs text-gray-400">${ex.set} Set | ${ex.target} | Rec: ${ex.rec}</p></div>
                         <div class="flex space-x-1">
                             <button onclick="caricaEsercizioInEditor('${idScheda}', ${index})" class="text-blue-500 p-2"><i class="fa-solid fa-pen"></i></button>
                             <button onclick="rimuoviEsercizio('${idScheda}', ${index})" class="text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
@@ -457,7 +521,6 @@
                 `;
             });
         }
-
         function caricaEsercizioInEditor(idScheda, index) {
             const dbSchede = JSON.parse(localStorage.getItem('mastro_schede'));
             const ex = dbSchede[idScheda][index];
@@ -473,7 +536,6 @@
             document.getElementById('btn-annulla').classList.remove('hidden');
             document.getElementById('editor-form-card').scrollIntoView({ behavior: 'smooth' });
         }
-
         function annullaModifica() {
             editModeIndex = -1;
             document.querySelectorAll('#view-editor input[type="text"], #view-editor input[type="number"]').forEach(inp => inp.value = '');
@@ -482,7 +544,6 @@
             document.getElementById('btn-salva-ex').innerText = "Aggiungi";
             document.getElementById('btn-annulla').classList.add('hidden');
         }
-
         function aggiungiOSalvaEsercizio() {
             const idScheda = document.getElementById('edit-scheda-select').value;
             const nome = document.getElementById('new-ex-nome').value;
@@ -500,13 +561,13 @@
             
             localStorage.setItem('mastro_schede', JSON.stringify(dbSchede)); renderEditor();
         }
-
         function rimuoviEsercizio(idScheda, index) {
             let dbSchede = JSON.parse(localStorage.getItem('mastro_schede'));
             dbSchede[idScheda].splice(index, 1);
             localStorage.setItem('mastro_schede', JSON.stringify(dbSchede)); renderEditor();
         }
 
+        // --- CALENDARIO FIXATO ---
         function generaCalendario() {
             const grid = document.getElementById('calendar-grid');
             const legend = document.getElementById('calendar-legend');
@@ -521,10 +582,7 @@
             });
 
             const oggi = new Date();
-            const anno = oggi.getFullYear(); 
-            const mese = oggi.getMonth(); 
-            const giornoOggi = oggi.getDate();
-            
+            const anno = oggi.getFullYear(); const mese = oggi.getMonth(); const giornoOggi = oggi.getDate();
             document.getElementById('mese-corrente').innerText = `${["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"][mese]} ${anno}`;
             
             const giorniNelMese = new Date(anno, mese + 1, 0).getDate();
@@ -532,14 +590,11 @@
             let celleVuote = primoGiornoMese === 0 ? 6 : primoGiornoMese - 1;
 
             for(let i=0; i<celleVuote; i++) {
-                let div = document.createElement('div');
-                div.className = 'day-box empty-box';
-                grid.appendChild(div);
+                let div = document.createElement('div'); div.className = 'day-box empty-box'; grid.appendChild(div);
             }
 
-            const storico = JSON.parse(localStorage.getItem('mastro_workout_history')) || [];
             const giorniAllenati = {};
-            storico.forEach(s => {
+            storicoCali.forEach(s => {
                 const [y, m, d] = s.data.split('-');
                 if (parseInt(y) === anno && parseInt(m) === mese + 1) giorniAllenati[parseInt(d)] = s.scheda;
             });
@@ -552,7 +607,6 @@
                 grid.appendChild(div);
             }
         }
-
         function preparaAllenamento() {
             localStorage.setItem('schedaDaAvviare', document.getElementById('scheda-select').value);
             window.location.href = 'workout.html';

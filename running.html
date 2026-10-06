@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MastroFit - Running Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+    const themeColor = localStorage.getItem('mastro_theme_color') || '#ff8c00';
+    tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: themeColor } } } };
+    document.documentElement.style.setProperty('--theme-color', themeColor);
+</script>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: -apple-system, sans-serif; }
+        .view-section { display: none; animation: fadeIn 0.3s; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input, select { background-color: #121212; border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #ff8c00; }
+        .tab-btn.active { border-bottom: 3px solid #ff8c00; color: #ff8c00; font-weight: bold; }
+    </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-20">
+
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-3xl font-bold">Corsa</h2>
+        <i class="fa-solid fa-person-running text-brandOrange text-2xl"></i>
+    </div>
+
+    <!-- MAIN MENU -->
+    <main id="view-hub" class="view-section active">
+        <button onclick="window.location.href = 'index.html'" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Torna alla Home
+        </button>
+
+        <div class="space-y-4">
+            <div onclick="switchView('view-input')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
+                <div class="w-14 h-14 rounded-full bg-brandOrange/20 flex items-center justify-center text-brandOrange mr-4"><i class="fa-solid fa-plus text-2xl"></i></div>
+                <div><h3 class="text-xl font-bold text-white">Registra Corsa</h3><p class="text-sm text-gray-400">Inserisci Km, tempi e note</p></div>
+            </div>
+
+            <div onclick="switchView('view-records')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
+                <div class="w-14 h-14 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-500 mr-4"><i class="fa-solid fa-medal text-2xl"></i></div>
+                <div><h3 class="text-xl font-bold text-white">Personal Best</h3><p class="text-sm text-gray-400">Record auto e tempi Strava</p></div>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-bold mt-8 mb-3 text-brandOrange">Ultime Corse</h3>
+        <div id="history-list" class="space-y-3">
+            <!-- Popolato da JS -->
+        </div>
+    </main>
+
+    <!-- REGISTRA CORSA -->
+    <main id="view-input" class="view-section">
+        <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition"><i class="fa-solid fa-arrow-left mr-2"></i> Indietro</button>
+        
+        <div class="bg-darkCard p-5 rounded-xl shadow-lg border border-gray-800 space-y-4">
+            <div>
+                <label class="text-xs text-gray-400 font-bold uppercase">Data</label>
+                <input type="date" id="run-date">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 font-bold uppercase">Distanza (Km)</label>
+                    <input type="number" id="run-km" step="0.01" placeholder="es. 5.20" oninput="calcolaPassoAutomatico()">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 font-bold uppercase">Tipo</label>
+                    <select id="run-type">
+                        <option value="Fondo Lento">Fondo Lento</option>
+                        <option value="Tempo Run">Tempo Run</option>
+                        <option value="Ripetute">Ripetute</option>
+                        <option value="Recovery">Recovery</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-400 font-bold uppercase">Tempo (Min e Sec)</label>
+                <div class="flex space-x-2 mt-1">
+                    <input type="number" id="run-min" placeholder="Min" class="text-center" oninput="calcolaPassoAutomatico()">
+                    <span class="text-2xl font-bold text-gray-500 mt-2">:</span>
+                    <input type="number" id="run-sec" placeholder="Sec" class="text-center" max="59" oninput="calcolaPassoAutomatico()">
+                </div>
+            </div>
+
+            <!-- Box Calcolo Passo -->
+            <div class="bg-[#121212] border border-gray-700 p-4 rounded-lg flex justify-between items-center">
+                <span class="text-sm text-gray-400 font-bold">Passo Medio:</span>
+                <span id="run-pace-display" class="text-2xl font-black text-brandOrange">00:00 <span class="text-sm font-normal">/km</span></span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 items-end">
+                <div>
+                    <label class="text-xs text-gray-400 font-bold uppercase">Metrica Sforzo</label>
+                    <select id="run-effort-type" onchange="cambiaMetricaSforzo()">
+                        <option value="RPE">RPE (1-10)</option>
+                        <option value="BPM">BPM (Cardio)</option>
+                    </select>
+                </div>
+                <div>
+                    <input type="number" id="run-effort-val" placeholder="Valore">
+                </div>
+            </div>
+
+            <!-- CAMPO NOTE CORSA -->
+            <div>
+                <label class="text-xs text-gray-400 font-bold uppercase block mb-1">Note (Opzionale)</label>
+                <textarea id="run-notes" class="w-full bg-[#121212] border border-gray-700 text-white p-3 rounded-lg text-sm resize-none" rows="2" placeholder="Sensazioni, meteo, dolori..."></textarea>
+            </div>
+
+            <button onclick="salvaCorsa()" class="w-full bg-brandOrange text-white font-bold py-4 rounded-xl shadow-lg mt-4 active:scale-95 transition">
+                <i class="fa-solid fa-check mr-2"></i> Salva Sessione
+            </button>
+        </div>
+    </main>
+
+    <!-- PERSONAL BEST (RECORD) -->
+    <main id="view-records" class="view-section">
+        <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition"><i class="fa-solid fa-arrow-left mr-2"></i> Indietro</button>
+        
+        <h3 class="text-lg font-bold text-white mb-3">Record Assoluti (Da Storico)</h3>
+        <div class="grid grid-cols-2 gap-3 mb-8">
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 text-center">
+                <i class="fa-solid fa-road text-brandOrange text-xl mb-1"></i>
+                <h4 class="text-2xl font-black text-white" id="pb-dist">0.0</h4>
+                <p class="text-[10px] uppercase text-gray-500 font-bold">Max Distanza (Km)</p>
+            </div>
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 text-center">
+                <i class="fa-solid fa-bolt text-brandOrange text-xl mb-1"></i>
+                <h4 class="text-2xl font-black text-white" id="pb-pace">--:--</h4>
+                <p class="text-[10px] uppercase text-gray-500 font-bold">Miglior Passo (/km)</p>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-bold text-white mb-3">Record Strava (PB Ufficiali)</h3>
+        <div class="bg-darkCard p-5 rounded-xl border border-gray-800 space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-gray-300 w-1/3">3 Km</span>
+                <input type="text" id="strava-3k" placeholder="es. 12:45" class="w-2/3 text-center">
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-gray-300 w-1/3">5 Km</span>
+                <input type="text" id="strava-5k" placeholder="es. 22:30" class="w-2/3 text-center">
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-gray-300 w-1/3">10 Km</span>
+                <input type="text" id="strava-10k" placeholder="es. 48:15" class="w-2/3 text-center">
+            </div>
+            <button onclick="salvaStravaPB()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow mt-2 active:scale-95 transition">
+                Salva Record
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const dbRun = JSON.parse(localStorage.getItem('mastro_running_history')) || [];
+        const dbStrava = JSON.parse(localStorage.getItem('mastro_strava_pb')) || { '3k': '', '5k': '', '10k': '' };
+        
+        document.getElementById('run-date').valueAsDate = new Date();
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            if(viewId === 'view-hub') renderHistory();
+            if(viewId === 'view-records') calcolaEstraiRecord();
+            window.scrollTo(0,0);
+        }
+
+        function calcolaPassoAutomatico() {
+            const km = parseFloat(document.getElementById('run-km').value);
+            const min = parseInt(document.getElementById('run-min').value) || 0;
+            const sec = parseInt(document.getElementById('run-sec').value) || 0;
+            
+            if(km > 0 && (min > 0 || sec > 0)) {
+                const totalSec = (min * 60) + sec;
+                const secPerKm = totalSec / km;
+                const pMin = Math.floor(secPerKm / 60);
+                const pSec = Math.floor(secPerKm % 60);
+                const passoStr = `${String(pMin).padStart(2,'0')}:${String(pSec).padStart(2,'0')}`;
+                document.getElementById('run-pace-display').innerHTML = `${passoStr} <span class="text-sm font-normal text-gray-500">/km</span>`;
+                return passoStr;
+            }
+            document.getElementById('run-pace-display').innerHTML = `00:00 <span class="text-sm font-normal text-gray-500">/km</span>`;
+            return "00:00";
+        }
+
+        function cambiaMetricaSforzo() {
+            const tipo = document.getElementById('run-effort-type').value;
+            const input = document.getElementById('run-effort-val');
+            input.placeholder = tipo === 'RPE' ? 'Valore 1-10' : 'Battiti';
+            input.value = '';
+        }
+
+        function salvaCorsa() {
+            const data = document.getElementById('run-date').value;
+            const km = parseFloat(document.getElementById('run-km').value);
+            const min = parseInt(document.getElementById('run-min').value) || 0;
+            const sec = parseInt(document.getElementById('run-sec').value) || 0;
+            const tipo = document.getElementById('run-type').value;
+            const effortType = document.getElementById('run-effort-type').value;
+            const effortVal = document.getElementById('run-effort-val').value;
+            const noteText = document.getElementById('run-notes').value.trim();
+
+            if(!data || !km || (min === 0 && sec === 0)) {
+                alert("Inserisci almeno i Km e il tempo!"); return;
+            }
+
+            const passo = calcolaPassoAutomatico();
+
+            // Salva nello storico corse
+            dbRun.push({
+                data: data, km: km, minuti: min, secondi: sec, passo: passo,
+                tipo: tipo, effortType: effortType, effortVal: effortVal
+            });
+            localStorage.setItem('mastro_running_history', JSON.stringify(dbRun));
+
+            // Salva nelle note corsa (se compilate)
+            if(noteText !== "") {
+                let dbRunNotes = JSON.parse(localStorage.getItem('mastro_running_notes')) || [];
+                dbRunNotes.push({
+                    data: new Date(data).toISOString(),
+                    titolo: `${km} Km - ${tipo}`,
+                    testo: noteText
+                });
+                localStorage.setItem('mastro_running_notes', JSON.stringify(dbRunNotes));
+            }
+            
+            // Pulisce il form
+            document.getElementById('run-km').value = '';
+            document.getElementById('run-min').value = '';
+            document.getElementById('run-sec').value = '';
+            document.getElementById('run-effort-val').value = '';
+            document.getElementById('run-notes').value = '';
+            document.getElementById('run-pace-display').innerHTML = `00:00 <span class="text-sm">/km</span>`;
+            
+            switchView('view-hub');
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            container.innerHTML = '';
+            if(dbRun.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 italic">Nessuna corsa registrata.</p>';
+                return;
+            }
+
+            const reversed = [...dbRun].reverse();
+            reversed.forEach(r => {
+                let effortBadge = r.effortVal ? `<span class="bg-gray-800 text-xs px-2 py-1 rounded ml-2">${r.effortType}: ${r.effortVal}</span>` : '';
+                let d = new Date(r.data);
+                let dStr = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+
+                container.innerHTML += `
+                    <div class="bg-darkBg p-4 rounded-xl border border-gray-800 shadow-sm border-l-4 border-l-brandOrange">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-white">${r.km} Km <span class="text-gray-400 font-normal text-sm ml-1">- ${r.tipo}</span></h4>
+                            <span class="text-xs text-brandOrange font-bold">${dStr}</span>
+                        </div>
+                        <div class="flex items-center text-sm font-mono text-gray-300">
+                            <i class="fa-solid fa-stopwatch mr-2"></i> ${r.passo} /km 
+                            <span class="ml-4"><i class="fa-regular fa-clock mr-1"></i> ${r.minuti}m ${r.secondi}s</span>
+                            ${effortBadge}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function calcolaEstraiRecord() {
+            let maxKm = 0; let bestSecPerKm = Infinity; let bestPaceStr = "--:--";
+
+            dbRun.forEach(r => {
+                if(parseFloat(r.km) > maxKm) maxKm = parseFloat(r.km);
+                
+                let pParts = r.passo.split(':');
+                if(pParts.length === 2) {
+                    let sec = parseInt(pParts[0])*60 + parseInt(pParts[1]);
+                    if(sec < bestSecPerKm) { bestSecPerKm = sec; bestPaceStr = r.passo; }
+                }
+            });
+
+            document.getElementById('pb-dist').innerText = maxKm > 0 ? maxKm.toFixed(2) : "0.0";
+            document.getElementById('pb-pace').innerText = bestPaceStr;
+
+            document.getElementById('strava-3k').value = dbStrava['3k'] || '';
+            document.getElementById('strava-5k').value = dbStrava['5k'] || '';
+            document.getElementById('strava-10k').value = dbStrava['10k'] || '';
+        }
+
+        function salvaStravaPB() {
+            dbStrava['3k'] = document.getElementById('strava-3k').value;
+            dbStrava['5k'] = document.getElementById('strava-5k').value;
+            dbStrava['10k'] = document.getElementById('strava-10k').value;
+            localStorage.setItem('mastro_strava_pb', JSON.stringify(dbStrava));
+            alert("Record Strava salvati!");
+        }
+
+        renderHistory();
+    </script>
+</body>
+</html>
