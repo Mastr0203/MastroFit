@@ -7,16 +7,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-    const themeColor = localStorage.getItem('mastro_theme_color') || '#ff8c00';
-    tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: themeColor } } } };
-    document.documentElement.style.setProperty('--theme-color', themeColor);
-</script>
+        const themeColor = localStorage.getItem('mastro_theme_color') || '#ff8c00';
+        tailwind.config = { theme: { extend: { colors: { darkBg: '#121212', darkCard: '#1e1e1e', brandOrange: themeColor } } } };
+        document.documentElement.style.setProperty('--theme-color', themeColor);
+    </script>
     <style>
         body { background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
         .workout-input { width: 100%; background-color: #121212; border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; }
-        .workout-input:focus { outline: none; border-color: #ff8c00; }
+        .workout-input:focus { outline: none; border-color: var(--theme-color, #ff8c00); }
         .workout-notes { width: 100%; background-color: #1a1a1a; border: 1px solid #333; color: #ccc; padding: 10px; border-radius: 6px; font-size: 0.9rem; resize: none; margin-top: 10px; }
-        .workout-notes:focus { border-color: #ff8c00; outline: none; }
+        .workout-notes:focus { border-color: var(--theme-color, #ff8c00); outline: none; }
         .timer-btn { background-color: #2563eb; color: white; border-radius: 8px; font-weight: bold; width: 60px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .timer-btn.active { background-color: #dc2626; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(0.95); } 100% { transform: scale(1); } }
@@ -24,6 +24,7 @@
 </head>
 <body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-32 relative">
 
+    <!-- SEZIONE 1: WORKOUT ATTIVO -->
     <div id="section-workout">
         <div class="flex justify-between items-center mb-6">
             <div><h2 class="text-2xl font-bold text-brandOrange" id="workout-title">Sessione</h2><p class="text-sm text-gray-400">Compila i set o usa il timer</p></div>
@@ -43,13 +44,20 @@
         </button>
     </div>
 
+    <!-- SEZIONE 2: REPORT A FINE SESSIONE -->
     <div id="section-report" class="hidden">
-        <div class="text-center mt-6 mb-8">
+        <div class="text-center mt-6 mb-6">
             <div class="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-trophy text-4xl text-white"></i></div>
-            <h2 class="text-3xl font-bold text-white mb-2">Conclusa!</h2>
+            <h2 class="text-3xl font-bold text-white mb-2">Ben Fatto!</h2>
             <p class="text-gray-400">Dati salvati in memoria.</p>
         </div>
-        <button onclick="window.location.href = 'calisthenics.html'" class="w-full bg-brandOrange text-white font-bold py-4 rounded-xl shadow-lg transition">Torna all'Hub</button>
+
+        <!-- Box Riassunto (Popolato via JS) -->
+        <div id="report-summary" class="bg-darkCard p-5 rounded-xl border border-gray-800 mb-8 space-y-3 shadow-lg">
+            <!-- Contenuto iniettato dinamicamente -->
+        </div>
+
+        <button onclick="window.location.href = 'calisthenics.html'" class="w-full bg-brandOrange text-white font-bold py-4 rounded-xl shadow-lg transition active:scale-95">Torna all'Hub</button>
     </div>
 
     <!-- UI TIMER DI RECUPERO IN BASSO -->
@@ -73,8 +81,6 @@
                 let inputId = `val-${exIndex}-${i}`;
                 
                 if (ex.isTime) {
-                    // SET A TEMPO (Timer Integrato)
-                    // Estrae il numero di secondi previsti dal target (es. "30 sec" -> 30)
                     let secTarget = parseInt(ex.target.replace(/\D/g, '')) || 30;
                     setsHtml += `
                         <div class="flex items-center justify-between bg-darkBg p-3 rounded-lg border border-gray-800 mb-2">
@@ -89,7 +95,6 @@
                         </div>
                     `;
                 } else {
-                    // SET NORMALE (Rep)
                     setsHtml += `
                         <div class="flex items-center justify-between bg-darkBg p-3 rounded-lg border border-gray-800 mb-2">
                             <span class="text-gray-400 font-bold w-1/4">Set ${i}</span>
@@ -102,7 +107,6 @@
                 }
             }
 
-            // Aggiunta Box Note a fine card
             container.innerHTML += `
                 <div class="bg-darkCard p-4 rounded-xl border border-gray-800 shadow-sm">
                     <div class="flex justify-between items-start mb-3">
@@ -128,26 +132,21 @@
             osc.start(); setTimeout(() => osc.stop(), duration);
         }
 
-        // --- TIMER ISOMETRICO PER SET A TEMPO ---
-        let activeSetTimers = {}; // { id: interval }
-        
+        // --- TIMER ISOMETRICO ---
+        let activeSetTimers = {};
         function toggleSetTimer(btn, inputId, targetSec) {
             const inputField = document.getElementById(inputId);
-            
-            // Se sta già andando, lo ferma
             if (btn.classList.contains('active')) {
                 clearInterval(activeSetTimers[inputId].interval);
                 let timeDone = targetSec - activeSetTimers[inputId].timeLeft;
-                inputField.value = timeDone > 0 ? timeDone : targetSec; // Inserisce il tempo reale
+                inputField.value = timeDone > 0 ? timeDone : targetSec; 
                 btn.classList.remove('active');
                 btn.innerHTML = '<i class="fa-solid fa-play"></i>';
                 delete activeSetTimers[inputId];
                 return;
             }
-
-            // Fa partire il timer
             btn.classList.add('active');
-            inputField.value = targetSec; // Mostra da dove parte
+            inputField.value = targetSec; 
             
             let timeLeft = targetSec;
             activeSetTimers[inputId] = {
@@ -159,12 +158,12 @@
 
                     if (timeLeft === 3 || timeLeft === 2 || timeLeft === 1) playBeep(500, 200);
                     else if (timeLeft <= 0) {
-                        playBeep(900, 800); // Beep lungo di fine isometria
+                        playBeep(900, 800); 
                         clearInterval(activeSetTimers[inputId].interval);
                         btn.classList.remove('active');
-                        btn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Spunta di completato
-                        btn.style.backgroundColor = '#16a34a'; // Diventa verde
-                        inputField.value = targetSec; // Scrive il tempo target completato
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i>'; 
+                        btn.style.backgroundColor = '#16a34a'; 
+                        inputField.value = targetSec; 
                         delete activeSetTimers[inputId];
                     }
                 }, 1000)
@@ -202,20 +201,19 @@
         }
         function saltaRecupero() { clearInterval(restInterval); document.getElementById('rest-timer-ui').classList.add('translate-y-full'); }
 
-        // --- SALVATAGGIO ---
+        // --- SALVATAGGIO E REPORT ---
         function salvaETermina() {
             clearInterval(globalInterval); saltaRecupero();
-            
-            // Ferma eventuali timer set rimasti appesi
             Object.values(activeSetTimers).forEach(t => clearInterval(t.interval));
 
             const repInputs = document.querySelectorAll('.rep-input');
             const rpeInputs = document.querySelectorAll('.rpe-input');
             const noteInputs = document.querySelectorAll('.note-input');
+            
+            const durataFinale = document.getElementById('global-timer').innerText;
 
             let reportRep = {}; let sRPE = 0; let cRPE = 0;
 
-            // Salva ripetizioni / secondi
             repInputs.forEach(input => {
                 const exName = input.getAttribute('data-ex');
                 const val = parseInt(input.value) || 0;
@@ -223,14 +221,12 @@
                 reportRep[exName] += val;
             });
 
-            // Calcola RPE Medio
             rpeInputs.forEach(input => {
                 const val = parseFloat(input.value);
                 if (!isNaN(val) && val > 0) { sRPE += val; cRPE++; }
             });
             const mediaRPE = cRPE > 0 ? (sRPE / cRPE).toFixed(1) : "N/A";
 
-            // SALVA LE NOTE NEL DATABASE DEDICATO
             let dbNote = JSON.parse(localStorage.getItem('mastro_notes')) || {};
             const dataOdierna = new Date().toISOString();
             
@@ -244,17 +240,43 @@
             });
             localStorage.setItem('mastro_notes', JSON.stringify(dbNote));
 
-            // SALVA LO STORICO SESSIONE
             const storico = JSON.parse(localStorage.getItem('mastro_workout_history')) || [];
             storico.push({
                 data: dataOdierna.split('T')[0],
                 scheda: idScheda,
-                durata: document.getElementById('global-timer').innerText,
+                durata: durataFinale,
                 rpeMedio: mediaRPE,
                 dettagli: reportRep
             });
             localStorage.setItem('mastro_workout_history', JSON.stringify(storico));
 
+            // GENERA HTML DEL RIASSUNTO
+            let summaryHtml = `
+                <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-3">
+                    <span class="text-gray-400 font-bold">Durata</span>
+                    <span class="text-white font-mono font-bold text-xl">${durataFinale}</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-3">
+                    <span class="text-gray-400 font-bold">Sforzo Medio (RPE)</span>
+                    <span class="text-brandOrange font-black text-xl">${mediaRPE}</span>
+                </div>
+                <h4 class="text-white font-bold mb-3 mt-1 text-sm uppercase tracking-widest text-brandOrange">Volume Eseguito</h4>
+            `;
+
+            Object.keys(reportRep).forEach(exName => {
+                let isTimeEx = scheda.find(e => e.nome === exName)?.isTime;
+                let unita = isTimeEx ? "sec" : "rep";
+                summaryHtml += `
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-gray-300 font-semibold">${exName}</span>
+                        <span class="text-white font-bold bg-darkBg px-2 py-1 rounded">${reportRep[exName]} ${unita}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('report-summary').innerHTML = summaryHtml;
+
+            // Transizione interfaccia
             document.getElementById('section-workout').classList.add('hidden');
             document.getElementById('section-report').classList.remove('hidden');
             window.scrollTo(0, 0);
