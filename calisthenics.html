@@ -30,6 +30,7 @@
         .status-ok { background-color: #16a34a; color: white; }
         .status-attuale { background-color: #eab308; color: black; }
         .status-vuoto { background-color: #333; color: #777; }
+        .editable-text:hover { color: #ff8c00; cursor: pointer; }
     </style>
 </head>
 <body class="max-w-md mx-auto min-h-screen px-5 py-5 pb-20">
@@ -51,7 +52,6 @@
                 <div><h3 class="text-xl font-bold text-white">Gestione Schede</h3><p class="text-sm text-gray-400">Modifica, aggiungi o rimuovi esercizi</p></div>
             </div>
 
-            <!-- NUOVA CARD: ACHIEVEMENTS -->
             <div onclick="switchView('view-achievements')" class="bg-darkCard p-6 rounded-xl border border-gray-800 shadow-lg flex items-center cursor-pointer active:scale-95 transition">
                 <div class="w-14 h-14 rounded-full bg-green-900/30 flex items-center justify-center text-green-500 mr-4"><i class="fa-solid fa-ranking-star text-2xl"></i></div>
                 <div><h3 class="text-xl font-bold text-white">Progressioni Skill</h3><p class="text-sm text-gray-400">Traccia Front Lever, Planche, ecc.</p></div>
@@ -66,12 +66,24 @@
 
     <!-- VISTA 2: ACHIEVEMENTS (TABELLA EXCEL) -->
     <main id="view-achievements" class="view-section">
-        <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white mb-6 flex items-center text-sm font-semibold transition">
-            <i class="fa-solid fa-arrow-left mr-2"></i> Indietro
-        </button>
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="switchView('view-hub')" class="text-gray-400 hover:text-white flex items-center text-sm font-semibold transition">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Indietro
+            </button>
+            <button onclick="toggleEditAchievements()" id="btn-edit-achievements" class="text-blue-500 hover:text-white text-sm font-bold transition">
+                <i class="fa-solid fa-pen mr-1"></i> Modifica
+            </button>
+        </div>
 
-        <h3 class="text-2xl font-bold text-brandOrange mb-4">Progressioni</h3>
-        <p class="text-sm text-gray-400 mb-6">Tocca lo stato a destra per cambiarlo (Vuoto -> Attuale -> OK).</p>
+        <div class="flex justify-between items-end mb-6">
+            <div>
+                <h3 class="text-2xl font-bold text-brandOrange">Progressioni</h3>
+                <p class="text-sm text-gray-400 mt-1" id="achievements-subtitle">Tocca lo stato a destra per cambiarlo.</p>
+            </div>
+            <button id="btn-add-skill" onclick="aggiungiSkill()" class="hidden bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition shadow-lg">
+                <i class="fa-solid fa-plus mr-1"></i> Skill
+            </button>
+        </div>
 
         <div id="achievements-container" class="space-y-6">
             <!-- Tabella generata da JS -->
@@ -98,10 +110,9 @@
             <div class="space-y-3">
                 <input type="text" id="new-ex-nome" placeholder="Nome Esercizio (es. Dips)">
                 
-                <!-- CHECKBOX ISOMETRIA -->
                 <div class="flex items-center bg-[#121212] border border-gray-700 p-3 rounded-lg">
                     <input type="checkbox" id="new-ex-istime">
-                    <label for="new-ex-istime" class="text-sm font-bold text-gray-300">Esercizio a Tempo (Secondi invece di Rep)</label>
+                    <label for="new-ex-istime" class="text-sm font-bold text-gray-300">Esercizio a Tempo (Sec invece di Rep)</label>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -145,7 +156,7 @@
     </main>
 
     <script>
-        // DATABASE INIZIALE SCHEDE
+        // --- DATABASE INIZIALE SCHEDE ---
         if (!localStorage.getItem('mastro_schede')) {
             localStorage.setItem('mastro_schede', JSON.stringify({
                 'A': [{ nome: 'Pike Push-ups', set: 4, target: '5-6 rep', rec: '2 min', recSec: 120, isTime: false }],
@@ -153,58 +164,77 @@
             }));
         }
 
-        // DATABASE INIZIALE ACHIEVEMENTS (Esattamente come Excel)
+        // --- DATABASE INIZIALE ACHIEVEMENTS ---
         const defaultAchievements = [
-            {
-                skill: "FRONT LEVER",
-                color: "bg-blue-800",
-                steps: [
-                    { step: "Tuck Front Lever", desc: "Ginocchia al petto, corpo raccolto", status: "OK" },
-                    { step: "Advanced Tuck Front Lever", desc: "Ginocchia leggermente aperte/estese", status: "ATTUALE" },
-                    { step: "Straddle Front Lever", desc: "Gambe dritte e larghe, corpo quasi disteso", status: "" },
-                    { step: "Half Lay Front Lever", desc: "Gambe unite, piegate a metà", status: "" },
-                    { step: "Full Front Lever", desc: "Corpo completamente disteso e orizzontale", status: "" }
-                ]
-            },
-            {
-                skill: "PLANCHE",
-                color: "bg-purple-800",
-                steps: [
-                    { step: "Tuck Planche", desc: "Ginocchia al petto, bacino sopra le mani", status: "OK" },
-                    { step: "Advanced Tuck Planche", desc: "Ginocchia estese, bacino più alto", status: "ATTUALE" },
-                    { step: "Straddle Planche", desc: "Gambe dritte e larghe", status: "" },
-                    { step: "Full Planche", desc: "Corpo completamente disteso", status: "" }
-                ]
-            },
-            {
-                skill: "MUSCLE-UP",
-                color: "bg-red-800",
-                steps: [
-                    { step: "False grip hang + dip esplosivi", desc: "Base di forza e presa", status: "ATTUALE" },
-                    { step: "Muscle-up negative", desc: "Discesa lenta controllata", status: "ATTUALE" },
-                    { step: "Muscle-up assistito (banda)", desc: "Transizione guidata", status: "" },
-                    { step: "Muscle-up strict singolo", desc: "Transizione senza slancio", status: "" }
-                ]
-            }
+            { skill: "FRONT LEVER", color: "bg-blue-800", steps: [
+                { step: "Tuck Front Lever", desc: "Ginocchia al petto, corpo raccolto", status: "OK" },
+                { step: "Advanced Tuck Front Lever", desc: "Ginocchia leggermente aperte/estese", status: "ATTUALE" },
+                { step: "Straddle Front Lever", desc: "Gambe dritte e larghe, corpo quasi disteso", status: "" },
+                { step: "Half Lay Front Lever", desc: "Gambe unite, piegate a metà", status: "" },
+                { step: "Full Front Lever", desc: "Corpo completamente disteso e orizzontale", status: "" }
+            ]},
+            { skill: "PLANCHE", color: "bg-purple-800", steps: [
+                { step: "Tuck Planche", desc: "Ginocchia al petto, bacino sopra le mani", status: "OK" },
+                { step: "Advanced Tuck Planche", desc: "Ginocchia estese, bacino più alto", status: "ATTUALE" },
+                { step: "Straddle Planche", desc: "Gambe dritte e larghe", status: "" },
+                { step: "Full Planche", desc: "Corpo completamente disteso", status: "" }
+            ]},
+            { skill: "MUSCLE-UP", color: "bg-red-800", steps: [
+                { step: "False grip hang + dip esplosivi", desc: "Base di forza e presa", status: "ATTUALE" },
+                { step: "Muscle-up negative", desc: "Discesa lenta controllata", status: "ATTUALE" },
+                { step: "Muscle-up assistito", desc: "Transizione guidata", status: "" },
+                { step: "Muscle-up strict singolo", desc: "Transizione senza slancio", status: "" }
+            ]}
         ];
 
         if(!localStorage.getItem('mastro_achievements')) {
             localStorage.setItem('mastro_achievements', JSON.stringify(defaultAchievements));
         }
 
-        let editModeIndex = -1;
-        const classiColori = ['color-0', 'color-1', 'color-2', 'color-3'];
-        
+        // --- LOGICA DI NAVIGAZIONE GLOBALE ---
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
+            
+            // Resetta lo stato di modifica quando cambi tab
+            isEditingAchievements = false; 
+            
             if(viewId === 'view-editor') { aggiornaDropdownSchede(); annullaModifica(); renderEditor(); }
             if(viewId === 'view-tracker') { aggiornaDropdownSchede(); generaCalendario(); }
-            if(viewId === 'view-achievements') { renderAchievements(); }
+            if(viewId === 'view-achievements') { setupEditModeUI(); renderAchievements(); }
             window.scrollTo(0,0);
         }
 
-        // --- ACHIEVEMENTS LOGIC ---
+        // --- GESTIONE ACHIEVEMENTS (TABELLE E MODIFICA) ---
+        let isEditingAchievements = false;
+        const skillColors = ["bg-blue-800", "bg-purple-800", "bg-red-800", "bg-teal-800", "bg-orange-800", "bg-pink-800"];
+
+        function toggleEditAchievements() {
+            isEditingAchievements = !isEditingAchievements;
+            setupEditModeUI();
+            renderAchievements();
+        }
+
+        function setupEditModeUI() {
+            const btnEdit = document.getElementById('btn-edit-achievements');
+            const subTitle = document.getElementById('achievements-subtitle');
+            const btnAddSkill = document.getElementById('btn-add-skill');
+
+            if (isEditingAchievements) {
+                btnEdit.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Fine';
+                btnEdit.className = 'text-green-500 hover:text-white text-sm font-bold transition';
+                subTitle.innerText = 'Tocca i testi per modificarli, elimina o aggiungi step.';
+                subTitle.className = 'text-sm text-blue-400 mt-1 font-bold';
+                btnAddSkill.classList.remove('hidden');
+            } else {
+                btnEdit.innerHTML = '<i class="fa-solid fa-pen mr-1"></i> Modifica';
+                btnEdit.className = 'text-blue-500 hover:text-white text-sm font-bold transition';
+                subTitle.innerText = 'Tocca lo stato a destra per cambiarlo.';
+                subTitle.className = 'text-sm text-gray-400 mt-1';
+                btnAddSkill.classList.add('hidden');
+            }
+        }
+
         function renderAchievements() {
             const db = JSON.parse(localStorage.getItem('mastro_achievements'));
             const container = document.getElementById('achievements-container');
@@ -212,41 +242,78 @@
 
             db.forEach((gruppo, gIndex) => {
                 let rowsHtml = '';
+                
+                // Generazione singole righe (Steps)
                 gruppo.steps.forEach((s, sIndex) => {
-                    let statusClass = s.status === 'OK' ? 'status-ok' : (s.status === 'ATTUALE' ? 'status-attuale' : 'status-vuoto');
-                    let statusText = s.status === '' ? '...' : s.status;
-
-                    rowsHtml += `
-                        <div class="flex border-b border-gray-700 text-xs">
-                            <div class="w-1/3 p-2 font-bold text-gray-200 border-r border-gray-700">${s.step}</div>
-                            <div class="w-1/2 p-2 text-gray-400">${s.desc}</div>
-                            <div class="w-1/6 p-2 flex items-center justify-center cursor-pointer ${statusClass} font-black text-center transition" 
-                                 onclick="cambiaStatoAchievement(${gIndex}, ${sIndex})">
-                                ${statusText}
+                    if (isEditingAchievements) {
+                        rowsHtml += `
+                            <div class="flex border-b border-gray-700 text-xs items-center">
+                                <div class="w-1/3 p-2 font-bold text-gray-200 border-r border-gray-700 editable-text" onclick="modificaStepText(${gIndex}, ${sIndex}, 'step')">
+                                    ${s.step} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i>
+                                </div>
+                                <div class="w-1/2 p-2 text-gray-400 editable-text" onclick="modificaStepText(${gIndex}, ${sIndex}, 'desc')">
+                                    ${s.desc} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i>
+                                </div>
+                                <div class="w-1/6 p-2 flex items-center justify-center cursor-pointer text-red-500 hover:text-red-400 transition" onclick="eliminaStep(${gIndex}, ${sIndex})">
+                                    <i class="fa-solid fa-trash text-sm"></i>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        let statusClass = s.status === 'OK' ? 'status-ok' : (s.status === 'ATTUALE' ? 'status-attuale' : 'status-vuoto');
+                        let statusText = s.status === '' ? '...' : s.status;
+                        rowsHtml += `
+                            <div class="flex border-b border-gray-700 text-xs">
+                                <div class="w-1/3 p-2 font-bold text-gray-200 border-r border-gray-700">${s.step}</div>
+                                <div class="w-1/2 p-2 text-gray-400">${s.desc}</div>
+                                <div class="w-1/6 p-2 flex items-center justify-center cursor-pointer ${statusClass} font-black text-center transition" onclick="cambiaStatoAchievement(${gIndex}, ${sIndex})">
+                                    ${statusText}
+                                </div>
+                            </div>
+                        `;
+                    }
                 });
 
+                // Tasto aggiungi step (solo in edit mode)
+                let addStepRow = isEditingAchievements ? `
+                    <div class="p-2 text-center bg-[#1a1a1a] cursor-pointer text-green-500 font-bold text-xs hover:bg-[#252525] transition" onclick="aggiungiStep(${gIndex})">
+                        <i class="fa-solid fa-plus mr-1"></i> Aggiungi Step
+                    </div>
+                ` : '';
+
+                // Header della tabella (Skill)
+                let headerContent = isEditingAchievements ? `
+                    <div class="flex justify-between items-center">
+                        <span class="cursor-pointer editable-text flex-1" onclick="rinominaSkill(${gIndex})">
+                            ${gruppo.skill} <i class="fa-solid fa-pen ml-2 text-xs opacity-70"></i>
+                        </span>
+                        <i class="fa-solid fa-trash text-white/70 hover:text-red-500 cursor-pointer ml-4 p-1" onclick="eliminaSkill(${gIndex})"></i>
+                    </div>
+                ` : `${gruppo.skill}`;
+
                 container.innerHTML += `
-                    <div class="bg-darkCard border border-gray-800 rounded-xl overflow-hidden shadow-lg">
-                        <div class="${gruppo.color} p-3 font-black tracking-widest text-white">${gruppo.skill}</div>
+                    <div class="bg-darkCard border border-gray-800 rounded-xl overflow-hidden shadow-lg ${isEditingAchievements ? 'border-dashed border-2 border-gray-600' : ''}">
+                        <div class="${gruppo.color} p-3 font-black tracking-widest text-white">
+                            ${headerContent}
+                        </div>
                         <div class="bg-[#222] flex text-[10px] uppercase font-bold text-gray-500 border-b border-gray-700">
                             <div class="w-1/3 p-2 border-r border-gray-700">Step</div>
                             <div class="w-1/2 p-2">Descrizione</div>
-                            <div class="w-1/6 p-2 text-center">Stato</div>
+                            <div class="w-1/6 p-2 text-center">${isEditingAchievements ? 'Azione' : 'Stato'}</div>
                         </div>
                         ${rowsHtml}
+                        ${addStepRow}
                     </div>
                 `;
             });
         }
 
+        // Funzioni CRUD per Achievements
         function cambiaStatoAchievement(gIndex, sIndex) {
+            if (isEditingAchievements) return; // Disabilitato in edit mode
             let db = JSON.parse(localStorage.getItem('mastro_achievements'));
             let current = db[gIndex].steps[sIndex].status;
             
-            // Ciclo: Vuoto -> ATTUALE -> OK -> Vuoto
             if(current === "") db[gIndex].steps[sIndex].status = "ATTUALE";
             else if(current === "ATTUALE") db[gIndex].steps[sIndex].status = "OK";
             else db[gIndex].steps[sIndex].status = "";
@@ -255,7 +322,74 @@
             renderAchievements();
         }
 
-        // --- EDITOR LOGIC ---
+        function aggiungiSkill() {
+            const nome = prompt("Nome della nuova Skill (es. HUMAN FLAG):");
+            if(nome && nome.trim() !== "") {
+                let db = JSON.parse(localStorage.getItem('mastro_achievements'));
+                let nextColor = skillColors[db.length % skillColors.length];
+                db.push({ skill: nome.toUpperCase().trim(), color: nextColor, steps: [] });
+                localStorage.setItem('mastro_achievements', JSON.stringify(db));
+                renderAchievements();
+            }
+        }
+
+        function rinominaSkill(gIndex) {
+            let db = JSON.parse(localStorage.getItem('mastro_achievements'));
+            const nuovoNome = prompt("Nuovo nome della Skill:", db[gIndex].skill);
+            if(nuovoNome && nuovoNome.trim() !== "") {
+                db[gIndex].skill = nuovoNome.toUpperCase().trim();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db));
+                renderAchievements();
+            }
+        }
+
+        function eliminaSkill(gIndex) {
+            if(confirm("Sei sicuro di voler eliminare interamente questa Skill e tutti i suoi step?")) {
+                let db = JSON.parse(localStorage.getItem('mastro_achievements'));
+                db.splice(gIndex, 1);
+                localStorage.setItem('mastro_achievements', JSON.stringify(db));
+                renderAchievements();
+            }
+        }
+
+        function aggiungiStep(gIndex) {
+            const stepName = prompt("Nome del nuovo step (es. Advanced Tuck):");
+            if(stepName && stepName.trim() !== "") {
+                const desc = prompt("Descrizione dello step (opzionale):") || "";
+                let db = JSON.parse(localStorage.getItem('mastro_achievements'));
+                db[gIndex].steps.push({ step: stepName.trim(), desc: desc.trim(), status: "" });
+                localStorage.setItem('mastro_achievements', JSON.stringify(db));
+                renderAchievements();
+            }
+        }
+
+        function modificaStepText(gIndex, sIndex, campo) {
+            let db = JSON.parse(localStorage.getItem('mastro_achievements'));
+            const oldVal = db[gIndex].steps[sIndex][campo];
+            let label = campo === 'step' ? 'il nome dello step' : 'la descrizione';
+            const newVal = prompt(`Modifica ${label}:`, oldVal);
+            
+            if(newVal !== null) { // Permette di svuotare la descrizione ma non il nome
+                if (campo === 'step' && newVal.trim() === "") return; // Ignora se nome vuoto
+                db[gIndex].steps[sIndex][campo] = newVal.trim();
+                localStorage.setItem('mastro_achievements', JSON.stringify(db));
+                renderAchievements();
+            }
+        }
+
+        function eliminaStep(gIndex, sIndex) {
+            if(confirm("Vuoi eliminare definitivamente questo step?")) {
+                let db = JSON.parse(localStorage.getItem('mastro_achievements'));
+                db[gIndex].steps.splice(sIndex, 1);
+                localStorage.setItem('mastro_achievements', JSON.stringify(db));
+                renderAchievements();
+            }
+        }
+
+        // --- RESTANTE LOGICA (EDITOR SCHEDE, CALENDARIO) ---
+        let editModeIndex = -1;
+        const classiColori = ['color-0', 'color-1', 'color-2', 'color-3'];
+        
         function aggiornaDropdownSchede() {
             const dbSchede = JSON.parse(localStorage.getItem('mastro_schede'));
             const nomiSchede = Object.keys(dbSchede);
@@ -373,7 +507,6 @@
             localStorage.setItem('mastro_schede', JSON.stringify(dbSchede)); renderEditor();
         }
 
-        // --- CALENDARIO FIXATO ---
         function generaCalendario() {
             const grid = document.getElementById('calendar-grid');
             const legend = document.getElementById('calendar-legend');
@@ -389,26 +522,21 @@
 
             const oggi = new Date();
             const anno = oggi.getFullYear(); 
-            const mese = oggi.getMonth(); // 0-11
+            const mese = oggi.getMonth(); 
             const giornoOggi = oggi.getDate();
             
             document.getElementById('mese-corrente').innerText = `${["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"][mese]} ${anno}`;
             
-            // CALCOLO CORRETTO DEI GIORNI E PADDING
             const giorniNelMese = new Date(anno, mese + 1, 0).getDate();
-            
-            // getDay() restituisce 0 per Domenica, 1 per Lunedì. In Italia il calendario inizia di Lunedì.
             let primoGiornoMese = new Date(anno, mese, 1).getDay();
-            let celleVuote = primoGiornoMese === 0 ? 6 : primoGiornoMese - 1; // Se 1 (Lunedì), celleVuote=0. Se 0 (Dom), celleVuote=6.
+            let celleVuote = primoGiornoMese === 0 ? 6 : primoGiornoMese - 1;
 
-            // 1. Aggiungi i quadrati vuoti all'inizio
             for(let i=0; i<celleVuote; i++) {
                 let div = document.createElement('div');
                 div.className = 'day-box empty-box';
                 grid.appendChild(div);
             }
 
-            // 2. Aggiungi i giorni effettivi
             const storico = JSON.parse(localStorage.getItem('mastro_workout_history')) || [];
             const giorniAllenati = {};
             storico.forEach(s => {
