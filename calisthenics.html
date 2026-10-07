@@ -216,12 +216,33 @@
         }
 
         // Inizializza DB Achievements se vuoto
+        // Inizializza DB Achievements se vuoto
         const defaultAchievements = [
-            { skill: "FRONT LEVER", color: "bg-blue-800", steps: [{ step: "Tuck Front Lever", desc: "Corpo raccolto", status: "OK" }, { step: "Advanced Tuck Front Lever", desc: "Ginocchia aperte", status: "ATTUALE" }] },
-            { skill: "PLANCHE", color: "bg-purple-800", steps: [{ step: "Tuck Planche", desc: "Ginocchia al petto", status: "OK" }, { step: "Advanced Tuck Planche", desc: "Bacino alto", status: "ATTUALE" }] },
-            { skill: "MUSCLE-UP", color: "bg-red-800", steps: [{ step: "False grip hang", desc: "Base presa", status: "ATTUALE" }, { step: "Muscle-up negative", desc: "Discesa lenta", status: "ATTUALE" }] }
+            { skill: "FRONT LEVER", color: "bg-blue-800", steps: [
+                { step: "Tuck Front Lever", desc: "Ginocchia al petto, corpo raccolto", status: "OK" },
+                { step: "Advanced Tuck Front Lever", desc: "Ginocchia leggermente aperte/estese", status: "ATTUALE" },
+                { step: "Straddle Front Lever", desc: "Gambe dritte e larghe, corpo quasi disteso", status: "" },
+                { step: "Half Lay Front Lever", desc: "Gambe unite, piegate a metà", status: "" },
+                { step: "Full Front Lever", desc: "Corpo completamente disteso e orizzontale", status: "" }
+            ]},
+            { skill: "PLANCHE", color: "bg-purple-800", steps: [
+                { step: "Tuck Planche", desc: "Ginocchia al petto, bacino sopra le mani", status: "OK" },
+                { step: "Advanced Tuck Planche", desc: "Ginocchia estese, bacino più alto", status: "ATTUALE" },
+                { step: "Straddle Planche", desc: "Gambe dritte e larghe", status: "" },
+                { step: "Full Planche", desc: "Corpo completamente disteso", status: "" }
+            ]},
+            { skill: "MUSCLE-UP", color: "bg-red-800", steps: [
+                { step: "False grip hang + dip esplosivi", desc: "Base di forza e presa", status: "ATTUALE" },
+                { step: "Muscle-up negative", desc: "Discesa lenta controllata", status: "ATTUALE" },
+                { step: "Muscle-up assistito", desc: "Transizione guidata", status: "" },
+                { step: "Muscle-up strict singolo", desc: "Transizione senza slancio", status: "" }
+            ]}
         ];
-        if(!localStorage.getItem('mastro_achievements')) localStorage.setItem('mastro_achievements', JSON.stringify(defaultAchievements));
+        
+        // Se l'array è vuoto, oppure ha caricato la versione "accorciata" per sbaglio, forza il ripristino:
+        if(!localStorage.getItem('mastro_achievements') || JSON.parse(localStorage.getItem('mastro_achievements'))[0].steps.length < 3) {
+            localStorage.setItem('mastro_achievements', JSON.stringify(defaultAchievements));
+        }
 
         // --- NAVIGAZIONE ---
         function switchView(viewId) {
